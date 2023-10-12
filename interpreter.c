@@ -1,24 +1,69 @@
 #include <stdlib.h>
+#include <string.h>
 
 
 #include "interpreter.h"
 
+#define KEY_CHARACTERS "#[]+-<>.,"
+
+// I don't feel like doing this dynamically.
+#define MAX_LOOP_DEPTH 256
 
 
 char* fullCode;
 char* strippedCode;
-uint16_t* strippedCodeIndeces;
+uint16_t* strippedIndeces;
 
 static char *FileToBuffer(const char *fileName);
+static uint16_t StripCode(char* code);
 
 
 char* InitInterpreter(const char* inFileName, void (*output)(char out)) {
     fullCode = FileToBuffer(inFileName);
+    StripCode(fullCode);
     return fullCode;
 }
 
 char InterpretNextChar(void);
 
+
+
+uint16_t StripCode(char* code) {
+    uint16_t strippedSize = 0;
+    char* c = code;
+
+    // Go through the entire code to measure how long our stripped code array needs to be.
+    while(*c) {
+        if(strchr(KEY_CHARACTERS, *c)) {
+            strippedSize++;
+            // I do the bracket jumping by storing the corresponding bracket for each bracket in the code,
+            // so we need to make space for that.
+            if(*c == '[' || *c == ']') strippedSize += 2;
+        }
+        c++;
+    }
+
+    // Allocate the arrays.
+    strippedCode = (char *) malloc(strippedSize * sizeof(char));
+    strippedIndeces = (uint16_t *) malloc(strippedSize * sizeof(uint16_t));
+
+
+    // Go through the code and actually strip it.
+    uint16_t index = 0;
+    while(*c) {
+        if(strchr(KEY_CHARACTERS, *c)) {
+            strippedCode[index] = *c;
+            // TODO: Implement the stack and the bracket thing.
+        }
+        c++;
+    }
+    return strippedSize;
+}
+
+
+
+// Thanks Michael on SO. I could write this myself but I truly cannot be bothered.
+// https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
 char *FileToBuffer(const char *fileName) {
 
     FILE *fp = fopen(fileName, "r");
@@ -53,3 +98,4 @@ char *FileToBuffer(const char *fileName) {
 
     return buffer;
 }
+
