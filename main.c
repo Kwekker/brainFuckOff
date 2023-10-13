@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <ncurses.h>
 
 #include "interpreter.h"
 #include "interface.h"
@@ -15,13 +17,27 @@ int main(int argc, char *argv[]) {
     }
 
     // Initialize the interpreter.
-    char* brainfuckCode = InitInterpreter(argv[1], OutputPutChar);
+    char* brainfuckCode = InitInterpreter(argv[1], OutputChar);
     if(brainfuckCode == NULL) {
         fprintf(stderr, "\nCould not open file.\n\n");
         return -1;
     }
 
     InitInterface(16, 16, brainfuckCode);
+
+    uint8_t running = 1;
+
+    while(1) {
+        if(running) switch(InterpretNextChar()) {
+            case INTERPRETER_EOF:
+                running = 0;
+                break;
+
+            case INTERPRETER_MEMORY_OUT_OF_BOUNDS:
+            case INTERPRETER_OUT_OF_MEMORY:
+                return -1;
+        }
+    }
 
     EndInterface();
     return 0;

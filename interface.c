@@ -42,6 +42,7 @@ void InitInterface(uint16_t memoryColumns, uint16_t outputHeight, char* code) {
     initscr();
     refresh();
     start_color();
+    noecho();
 
     init_pair(BRACKET_PAIR, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(MOVER_PAIR,   COLOR_YELLOW, COLOR_BLACK);
@@ -104,8 +105,6 @@ void InitInterface(uint16_t memoryColumns, uint16_t outputHeight, char* code) {
 
     // Print code into the code window.
     RePrintCode(0);
-
-    getch();
 }
 
 void EndInterface(void) {
@@ -130,8 +129,9 @@ void RePrintCode(uint16_t line) {
     wrefresh(codeWin);
 }
 
-void OutputPutChar(char outChar) {
-    waddch(outputWin, outChar);
+void OutputChar(char outChar) {
+    wprintw(outputWin, "%c", outChar);
+    wrefresh(outputWin);
 }
 
 uint8_t GetCharColor(char c) {
