@@ -14,6 +14,7 @@
 #define CHANGER_PAIR    3
 #define INOUT_PAIR      4
 #define COMMENT_PAIR    5
+#define RUNNING_PAIR    6
 
 #define COLOR_GREY      8
 
@@ -30,6 +31,8 @@ static WINDOW *debugWin;
 static WINDOW *inputWin;
  
 static char* brainfuckCode;
+static uint16_t* codeLines;
+static char* brainfuckMemory;
 
 // Store the line of code we are currently on for the scrolling of long files.
 static uint16_t codeLine = 0;
@@ -38,15 +41,19 @@ static void RePrintCode(uint16_t line);
 static uint8_t GetCharColor(char c);
 
 
-void InitInterface(uint16_t memoryColumns, uint16_t outputHeight, char* code) {
-    initscr();
-    refresh();
+void InitInterface(uint16_t memoryColumns, uint16_t outputHeight, char* code, uint8_t* memory) {
+    initscr();      // Init ncurses.
+    refresh();      // Refresh the screen once before doing anything.
+    noecho();       // Don't echo input.
+    curs_set(0);    // Hide cursor.
+
+    // Initialize all the colors.
     start_color();
-    noecho();
 
     init_pair(BRACKET_PAIR, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(MOVER_PAIR,   COLOR_YELLOW, COLOR_BLACK);
     init_pair(INOUT_PAIR,   COLOR_CYAN, COLOR_BLACK);
+    init_pair(RUNNING_PAIR, COLOR_WHITE, COLOR_RED);
 
     if(can_change_color()) {
         init_color(COLOR_GREY, 400, 400, 400);
@@ -58,7 +65,9 @@ void InitInterface(uint16_t memoryColumns, uint16_t outputHeight, char* code) {
         init_pair(CHANGER_PAIR, COLOR_BLUE, COLOR_BLACK);
     }
 
+    // Set statics.
     brainfuckCode = code;
+    brainfuckMemory = memory;
 
     // Get terminal size.
     // Resizing is not supported because I prefer not having headaches.
@@ -112,7 +121,33 @@ void EndInterface(void) {
 }
 
 void UpdateCode(uint16_t index) {
+    static uint16_t prevIndex = -1;
+    static uint16_t prevRow = -1;
+    static uint16_t prevCol = -1;
 
+    // Find the row and column of the current character.
+    uint16_t row = 0;
+    uint16_t col = 0;
+    for(uint16_t i = 0; i < index; i++) {
+        col++;
+        if(brainfuckCode[i] == '\n') {
+            row++;
+            col = 0;
+        }
+    }
+    wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
+    mvwaddch(codeWin, prevRow, prevCol, brainfuckCode[prevIndex]);
+    wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
+
+    wattron(codeWin, COLOR_PAIR(RUNNING_PAIR));
+    mvwaddch(codeWin, row, col, brainfuckCode[index]);
+    wattroff(codeWin, COLOR_PAIR(RUNNING_PAIR));
+
+    wrefresh(codeWin);
+
+    prevIndex = index;
+    prevRow = row;
+    prevCol = col;
 }
 
 void RePrintCode(uint16_t line) {

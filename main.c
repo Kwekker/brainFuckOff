@@ -18,24 +18,31 @@ int main(int argc, char *argv[]) {
 
     // Initialize the interpreter.
     char* brainfuckCode = InitInterpreter(argv[1], OutputChar);
+    uint8_t* brainfuckMemory = GetMemory();
+
     if(brainfuckCode == NULL) {
         fprintf(stderr, "\nCould not open file.\n\n");
         return -1;
     }
 
-    InitInterface(16, 16, brainfuckCode);
+    InitInterface(16, 32, brainfuckCode, brainfuckMemory);
 
     uint8_t running = 1;
 
     while(1) {
-        if(running) switch(InterpretNextChar()) {
-            case INTERPRETER_EOF:
-                running = 0;
-                break;
+        if(running) {
+            uint16_t* codeIndex;
+            switch(InterpretNextChar(&codeIndex)) {
+                case INTERPRETER_EOF:
+                    running = 0;
+                    break;
 
-            case INTERPRETER_MEMORY_OUT_OF_BOUNDS:
-            case INTERPRETER_OUT_OF_MEMORY:
-                return -1;
+                case INTERPRETER_MEMORY_OUT_OF_BOUNDS:
+                case INTERPRETER_OUT_OF_MEMORY:
+                    return -1;
+            }
+            UpdateCode(codeIndex);
+            getch();
         }
     }
 

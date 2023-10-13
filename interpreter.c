@@ -43,10 +43,11 @@ char* InitInterpreter(const char* inFileName, void (*Output)(char out)) {
 }
 
 
-char InterpretNextChar(void) {
+char InterpretNextChar(uint16_t* retIndex) {
 
     // Store the char because the index might change.
     char codeChar = strippedCode[strippedIndex];
+    *retIndex = strippedIndeces[strippedIndex];
 
     switch(codeChar) {
         case '+':
@@ -115,11 +116,8 @@ char InterpretNextChar(void) {
         //     fprintf(stderr, "%2d ", i);
         return INTERPRETER_EOF;
     }
-
     return codeChar;
 }
-
-
 
 
 // The stripper strips code that looks like this:
@@ -162,6 +160,7 @@ uint16_t StripCode(char* code) {
     while(code[codeIndex]) {
         if(strchr(KEY_CHARACTERS, code[codeIndex])) {
             strippedCode[strippedIndex] = code[codeIndex];
+            strippedIndeces[strippedIndex] = codeIndex;
 
             // Push the index onto the stack if it's an opening bracket.
             if(code[codeIndex] == '[') {
@@ -192,6 +191,15 @@ uint16_t StripCode(char* code) {
     return strippedSize;
 }
 
+
+
+uint16_t GetCodeIndex(void) {
+    return strippedIndeces[strippedIndex];
+}
+
+uint8_t* GetMemory(void) {
+    return memory;
+}
 
 
 // Thanks Michael on SO. I could write this myself but I truly cannot be bothered.
