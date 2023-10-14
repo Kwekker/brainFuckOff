@@ -4,10 +4,8 @@
 #include "interpreter.h"
 #include "interface.h"
 
-//TODO: Write window management before doing any brainfuck. It's both kinda fun.
-//TODO: Design a window layout. 
-//TODO: Write brainfuck interpreter.
-//TODO: Decide how you're going to handle input.
+// TODO: Window scrolling.
+// TODO: Debugger.
 
 int main(int argc, char *argv[]) {
     
@@ -18,21 +16,28 @@ int main(int argc, char *argv[]) {
 
     // Initialize the interpreter.
     char* brainfuckCode = InitInterpreter(argv[1], OutputChar);
-    uint8_t* brainfuckMemory = GetMemory();
-
     if(brainfuckCode == NULL) {
         fprintf(stderr, "\nCould not open file.\n\n");
         return -1;
     }
 
-    InitInterface(16, 32, brainfuckCode, brainfuckMemory);
 
     uint8_t running = 1;
 
+    // Start the cursor up at the first valid Brainfuck character.
+    InitInterface(35, brainfuckCode);
+    UpdateCode(GetCodeIndex());
+
     while(1) {
         if(running) {
-            uint16_t* codeIndex;
-            switch(InterpretNextChar(&codeIndex)) {
+            switch(InterpretNextChar()) {
+                case '#':
+                    getch();
+                    break;
+
+                case ',':
+                    break;
+
                 case INTERPRETER_EOF:
                     running = 0;
                     break;
@@ -41,8 +46,8 @@ int main(int argc, char *argv[]) {
                 case INTERPRETER_OUT_OF_MEMORY:
                     return -1;
             }
-            UpdateCode(codeIndex);
-            getch();
+            UpdateCode(GetCodeIndex());
+            UpdateMemory(GetMemory(), GetMemIndex());
         }
     }
 

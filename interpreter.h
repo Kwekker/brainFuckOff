@@ -8,10 +8,11 @@
 
 
 char* InitInterpreter(const char* inFile, void (*output)(char out));
-char InterpretNextChar(uint16_t* codeIndex);
-void ProvideInput(char input);
+char InterpretNextChar(void);
+void ProvideInput(uint8_t input);
 
 uint16_t GetCodeIndex(void);
+uint16_t GetMemIndex(void);
 
 // Returns a pointer to the memory array.
 uint8_t* GetMemory(void);

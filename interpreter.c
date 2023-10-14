@@ -43,11 +43,10 @@ char* InitInterpreter(const char* inFileName, void (*Output)(char out)) {
 }
 
 
-char InterpretNextChar(uint16_t* retIndex) {
+char InterpretNextChar(void) {
 
     // Store the char because the index might change.
     char codeChar = strippedCode[strippedIndex];
-    *retIndex = strippedIndeces[strippedIndex];
 
     switch(codeChar) {
         case '+':
@@ -63,13 +62,14 @@ char InterpretNextChar(uint16_t* retIndex) {
             if(memoryIndex >= memorySize) {
                 memorySize += INITIAL_MEMORY_SIZE;
                 memory = (uint8_t*)realloc(memory, memorySize);
-                // Fill it with 0's.
-                memset(memory + memorySize - INITIAL_MEMORY_SIZE, 0, INITIAL_MEMORY_SIZE);
 
                 if(memory == NULL) {
                     fprintf(stderr, "Not enough memory :(\n");
                     return INTERPRETER_OUT_OF_MEMORY;
                 }
+
+                // Fill it with 0's.
+                memset(memory + memorySize - INITIAL_MEMORY_SIZE, 0x00, INITIAL_MEMORY_SIZE);
             }
             break;
         case '<':
@@ -108,15 +108,15 @@ char InterpretNextChar(uint16_t* retIndex) {
     }
     strippedIndex++;
     if(strippedIndex == strippedLength) {
-        //  fprintf(stderr, "\n\r");
-        // for(uint8_t i = 0; i < strippedLength; i++)
-        //     fprintf(stderr, "%c  ", isprint(strippedCode[i]) ? strippedCode[i] : ' ');
-        // fprintf(stderr, "\n\r");
-        // for(uint8_t i = 0; i < strippedLength; i++)
-        //     fprintf(stderr, "%2d ", i);
         return INTERPRETER_EOF;
     }
+
     return codeChar;
+}
+
+void ProvideInput(uint8_t input) {
+    memory[memoryIndex] = input;
+    strippedIndex++;
 }
 
 
@@ -195,6 +195,10 @@ uint16_t StripCode(char* code) {
 
 uint16_t GetCodeIndex(void) {
     return strippedIndeces[strippedIndex];
+}
+
+uint16_t GetMemIndex(void) {
+    return memoryIndex;
 }
 
 uint8_t* GetMemory(void) {

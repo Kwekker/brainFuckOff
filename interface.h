@@ -3,10 +3,11 @@
 
 #include <stdint.h>
 
-void InitInterface(uint16_t memoryColumns, uint16_t outputHeight, char* code, uint8_t* memory);
+void InitInterface(uint16_t outputHeight, char* code);
 void EndInterface(void);
 
 void UpdateCode(uint16_t index);
+void UpdateMemory(uint8_t* memory, uint16_t index);
 void OutputChar(char outChar);
 
 #endif // _INTERFACE_H_
