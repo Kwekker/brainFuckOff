@@ -1,2 +1,8 @@
+# Ignore the vscode options folder.
 .vscode/
+
+# Ignore the binary.
 brainfuckoff
+
+# Ignore all brainfuck testfiles that I didn't make.
+bftest/
