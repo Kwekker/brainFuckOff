@@ -4,8 +4,10 @@
 #include "interpreter.h"
 #include "interface.h"
 
+
 // TODO: Window scrolling.
 // TODO: Debugger.
+
 
 int main(int argc, char *argv[]) {
     
@@ -17,7 +19,7 @@ int main(int argc, char *argv[]) {
     // Initialize the interpreter.
     char* brainfuckCode = InitInterpreter(argv[1], OutputChar);
     if(brainfuckCode == NULL) {
-        fprintf(stderr, "\nCould not open file.\n\n");
+        fprintf(stderr, "\nCould not open/read file.\n\n");
         return -1;
     }
 
@@ -25,11 +27,21 @@ int main(int argc, char *argv[]) {
     uint8_t running = 1;
 
     // Start the cursor up at the first valid Brainfuck character.
-    InitInterface(35, brainfuckCode);
-    UpdateCode(GetCodeIndex());
+    InitInterface(20, brainfuckCode);
+    // UpdateCode(GetCodeIndex());
 
     while(1) {
+        char c = getch();
+        for(uint8_t i = 0; i < 255; i++) {
+            OutputChar(c);
+        }
+
+        continue;
+
+
+
         if(running) {
+            // getch();
             switch(InterpretNextChar()) {
                 case '#':
                     getch();
@@ -54,4 +66,3 @@ int main(int argc, char *argv[]) {
     EndInterface();
     return 0;
 }
-

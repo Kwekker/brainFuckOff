@@ -31,6 +31,7 @@ static uint16_t StripCode(char* code);
 
 char* InitInterpreter(const char* inFileName, void (*Output)(char out)) {
     fullCode = FileToBuffer(inFileName);
+    if(fullCode == NULL) return NULL;
     strippedLength = StripCode(fullCode);
    
 
@@ -131,6 +132,9 @@ void ProvideInput(uint8_t input) {
 //
 // Here, II contain the index of the corresponding bracket, so it would be:
 // `+++[0b->+++]03`
+//
+// TODO: Count the maximum depth of [loops] and malloc the stack using that number.
+// It's a bit more elegant that way, and you can nest more than 256 times.
 uint16_t StripCode(char* code) {
     uint16_t strippedSize = 0;
     char* c = code;
@@ -213,7 +217,7 @@ char *FileToBuffer(const char *fileName) {
     FILE *fp = fopen(fileName, "r");
     if(fp == NULL) return NULL;
 
-    char* buffer;
+    char* buffer = NULL;
 
     if (fp != NULL) {
         // Go to the end of the file.
