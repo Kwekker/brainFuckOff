@@ -31,17 +31,12 @@ int main(int argc, char *argv[]) {
     // UpdateCode(GetCodeIndex());
 
     while(1) {
-        char c = getch();
-        for(uint8_t i = 0; i < 255; i++) {
-            OutputChar(c);
-        }
-
-        continue;
-
 
 
         if(running) {
-            // getch();
+            UpdateCode(GetCodeIndex());
+            UpdateMemory(GetMemory(), GetMemIndex());
+            getch();
             switch(InterpretNextChar()) {
                 case '#':
                     getch();
@@ -58,8 +53,7 @@ int main(int argc, char *argv[]) {
                 case INTERPRETER_OUT_OF_MEMORY:
                     return -1;
             }
-            UpdateCode(GetCodeIndex());
-            UpdateMemory(GetMemory(), GetMemIndex());
+        
         }
     }
 

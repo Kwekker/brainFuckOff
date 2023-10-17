@@ -44,7 +44,6 @@ static void PrintNewMemoryRow(void);
 static uint16_t CalculateMemoryWidth(uint16_t terminalWidth);
 
 static void InitCodeWindow(void);
-static void RePrintCode(uint16_t line);
 static uint8_t GetCharColor(char c);
 
 
@@ -131,11 +130,6 @@ void InitInterface(uint16_t outputHeight, char* code) {
     // Print code into the code window.
     InitCodeWindow();
     InitMemoryWindow();
-
-    uint16_t i = 0;
-    while(getch() != 'r') {
-        UpdateCode(i++);
-    }
 
 }
 
@@ -224,23 +218,23 @@ static uint16_t CalculateMemoryWidth(uint16_t terminalWidth) {
 
 // codeLines is an array that stores the first index of every line in the code. Lines include newlines, but also width overflows.
 static uint16_t* codeLines;
-static uint16_t codeLinesIndex;
-static uint16_t codeLinesSize;
+static uint16_t codeLinesAmount;
+static uint16_t codeLinesArraySize;
 static uint16_t currentCodeLine = 0;
 static void StoreCodeLine(uint16_t index);
 
+
+// Print the first window of code.
 void InitCodeWindow(void) {
     // Init the codeLines array with like idk 2 times the window height.
-    codeLinesSize = 2 * codeHeight;
-    codeLines = (uint16_t*) malloc(codeLinesSize * sizeof(uint16_t));
+    codeLinesArraySize = 2 * codeHeight;
+    codeLines = (uint16_t*) malloc(codeLinesArraySize * sizeof(uint16_t));
 
     // Print the code up to the end of the window.
     char* codePtr = brainfuckCode;
     wmove(codeWin, 0, 0);
-    uint16_t prevX = 0xffff;
 
-    for (;;) {
-        prevX = getcurx(codeWin);
+    while(*codePtr) {
 
         // Store the line index.
         if(getcurx(codeWin) == 0) StoreCodeLine(codePtr - brainfuckCode);
@@ -262,52 +256,86 @@ void InitCodeWindow(void) {
 }
 
 
-void StoreCodeLine(uint16_t index) {
-    codeLines[codeLinesIndex++] = index;
+void PrintNewLinesToIndex(uint16_t index) {
 
-    // Reallocate codeLines if it too big.
-    if(codeLinesIndex + 1 == codeLinesSize) {
-        codeLinesSize += codeHeight;
-        codeLines = (uint16_t*) realloc(codeLines, codeLinesSize);
+
+    // Start at the first character of the last line.
+    // This is always the line after the lastly printed line.
+    uint16_t codeIndex = codeLines[codeLinesAmount - 1];
+    wprintw(outputWin, "%d %d\n", index, codeIndex);
+    wrefresh(outputWin);
+
+    
+    // Print lines.
+    while(codeIndex <= index) {
+        // Scroll down one line.
+        scrollok(codeWin, 1);
+        scroll(codeWin);
+        scrollok(codeWin, 0);
+        wmove(codeWin, getmaxy(codeWin) - 1, 0);
+
+        // Print one line.
+        int endOfLine = 0;
+        while(!endOfLine) {
+            wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[codeIndex])));
+            endOfLine = waddch(codeWin, brainfuckCode[codeIndex]);
+            wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[codeIndex])));
+            codeIndex++;
+        }
+
+        // Store the next line's index.
+        currentCodeLine++;
+        StoreCodeLine(codeIndex);
     }
+    
+    wrefresh(codeWin);
+    wrefresh(outputWin);
 }
 
 
-void RePrintCode(uint16_t line) {
-    char* codePtr = brainfuckCode;
+void StoreCodeLine(uint16_t index) {
+    codeLines[codeLinesAmount++] = index;
 
-    while(*codePtr) {
-        // Print the character
-        wattron(codeWin, COLOR_PAIR(GetCharColor(*codePtr)));
-        waddch(codeWin, *codePtr);
-        wattroff(codeWin, COLOR_PAIR(GetCharColor(*codePtr)));
-        codePtr++;
+    // Reallocate codeLines if it too big.
+    if(codeLinesAmount + 1 == codeLinesArraySize) {
+        codeLinesArraySize += codeHeight;
+        codeLines = (uint16_t*) realloc(codeLines, codeLinesArraySize);
     }
-
-    wrefresh(codeWin);
 }
 
 void UpdateCode(uint16_t codeIndex) {
     static uint16_t prevIndex = -1;
-    static uint16_t prevRow = -1;
+    static uint16_t prevLine = -1;
     static uint16_t prevCol = -1;
 
-    uint16_t row = 0;
+    uint16_t line = 0;
 
-    // Find the row of the current character through codeLines.
-    while(codeLines[row] <= codeIndex && row < codeLinesIndex) {
-        row++;
+    // Find the line of the current character through codeLines.
+    while(codeLines[line] <= codeIndex && line < codeLinesAmount) {
+        line++;
     }
-    row--;
+    line--;
 
-    // If the row is out of bounds, scroll the window so it's visible.
-    if(row < currentCodeLine || row - currentCodeLine > codeHeight || row >= codeLinesIndex - 1) {
-        // TODO: Scroll window
-        return;
+    // If we haven't printed this line before, scroll the window until it's visible.
+    if(line >= codeLinesAmount - 1) {
+        wprintw(outputWin, "char is %c\n", brainfuckCode[codeIndex]);
+        wrefresh(outputWin);
+        PrintNewLinesToIndex(codeIndex);
+        line = codeLinesAmount - 2;
+    }
+    
+    // Make the next code more readable.
+    const int16_t row = line - currentCodeLine;
+    const int16_t prevRow = prevLine - currentCodeLine;
+
+    // If the line is out of bounds, but we've printed it before:
+    if(row < 0 || row > codeHeight) {
+        // Do thing hehe
+        // return;
     }
 
     // Calculate the column of the character.
-    uint16_t col = codeIndex - codeLines[row];
+    uint16_t col = codeIndex - codeLines[line];
 
     // Print the previously selected character in the normal color.
     wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
@@ -320,7 +348,7 @@ void UpdateCode(uint16_t codeIndex) {
     wattroff(codeWin, COLOR_PAIR(RUNNING_PAIR));
 
     prevIndex = codeIndex;
-    prevRow = row;
+    prevLine = line;
     prevCol = col;
 
     wrefresh(codeWin);
@@ -352,10 +380,5 @@ uint8_t GetCharColor(char c) {
 // Output 1 character to the output window.
 void OutputChar(char outChar) {
     wprintw(outputWin, "%c", outChar);
-    if(outputWin->_cury >= outputWin->_maxy - 1) {
-        wmove(outputWin, 0, 0);
-        wprintw(outputWin, "%c", outChar);
-    }
-
     wrefresh(outputWin);
 }
