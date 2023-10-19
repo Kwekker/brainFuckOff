@@ -45,6 +45,9 @@ static uint16_t CalculateMemoryWidth(uint16_t terminalWidth);
 
 static void InitCodeWindow(void);
 static uint8_t GetCharColor(char c);
+void PrintNewLinesToIndex(uint16_t index);
+void ReprintCodeLines(uint16_t from, uint16_t to);
+
 
 
 void InitInterface(uint16_t outputHeight, char* code) {
@@ -224,6 +227,7 @@ static uint16_t currentCodeLine = 0;
 static void StoreCodeLine(uint16_t index);
 
 
+
 // Print the first window of code.
 void InitCodeWindow(void) {
     // Init the codeLines array with like idk 2 times the window height.
@@ -255,6 +259,69 @@ void InitCodeWindow(void) {
     wrefresh(codeWin);
 }
 
+
+void UpdateCode(uint16_t codeIndex) {
+    static uint16_t prevIndex = -1;
+    static uint16_t prevLine = -1;
+    static uint16_t prevCol = -1;
+
+    uint16_t line = 0;
+
+    // Find the line of the current character through codeLines.
+    while(codeLines[line] <= codeIndex && line < codeLinesAmount) {
+        line++;
+    }
+    line--;
+
+    // If we haven't printed this line before, scroll the window until it's visible.
+    if(line >= codeLinesAmount - 1) {
+        wprintw(outputWin, "char is %c\n", brainfuckCode[codeIndex]);
+        wrefresh(outputWin);
+        PrintNewLinesToIndex(codeIndex);
+        line = codeLinesAmount - 2;
+    }
+    
+    // Make the next code more readable.
+    int16_t row = line - currentCodeLine;
+    const int16_t prevRow = prevLine - currentCodeLine;
+
+    // Print the previously selected character in the normal color.
+    wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
+    mvwaddch(codeWin, prevRow, prevCol, brainfuckCode[prevIndex]);
+    wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
+
+    // If the line is out of bounds, but we've printed it before:
+    // Scroll the screen down.
+    if(row < 0) {
+        const uint16_t prevCodeLine = currentCodeLine;
+
+        // Make sure that adding the margin does not put the first line lower than the top of the window.
+        if(line <= CODE_TOP_MARGIN) currentCodeLine = 0;
+        else currentCodeLine = line - CODE_TOP_MARGIN;
+
+        row = line - currentCodeLine;
+        scrollok(codeWin, 1);
+        wscrl(codeWin, currentCodeLine - prevCodeLine);
+        scrollok(codeWin, 0);
+        ReprintCodeLines(0, prevCodeLine - currentCodeLine);
+    }
+
+
+    // Calculate the column of the character.
+    uint16_t col = codeIndex - codeLines[line];
+
+    
+    // Print the newly selected character in the selected color pair.
+    wattron(codeWin, COLOR_PAIR(RUNNING_PAIR));
+    mvwaddch(codeWin, row, col, brainfuckCode[codeIndex]);
+    wattroff(codeWin, COLOR_PAIR(RUNNING_PAIR));
+
+    prevIndex = codeIndex;
+    prevLine = line;
+    prevCol = col;
+
+    wrefresh(codeWin);
+}
 
 void PrintNewLinesToIndex(uint16_t index) {
 
@@ -292,7 +359,6 @@ void PrintNewLinesToIndex(uint16_t index) {
     wrefresh(outputWin);
 }
 
-
 void StoreCodeLine(uint16_t index) {
     codeLines[codeLinesAmount++] = index;
 
@@ -303,55 +369,17 @@ void StoreCodeLine(uint16_t index) {
     }
 }
 
-void UpdateCode(uint16_t codeIndex) {
-    static uint16_t prevIndex = -1;
-    static uint16_t prevLine = -1;
-    static uint16_t prevCol = -1;
 
-    uint16_t line = 0;
+// Prints lines from `from` to `to` in rows (not lines).
+void ReprintCodeLines(uint16_t from, uint16_t to) {
+    wmove(codeWin, from, 0);
 
-    // Find the line of the current character through codeLines.
-    while(codeLines[line] <= codeIndex && line < codeLinesAmount) {
-        line++;
-    }
-    line--;
-
-    // If we haven't printed this line before, scroll the window until it's visible.
-    if(line >= codeLinesAmount - 1) {
-        wprintw(outputWin, "char is %c\n", brainfuckCode[codeIndex]);
-        wrefresh(outputWin);
-        PrintNewLinesToIndex(codeIndex);
-        line = codeLinesAmount - 2;
-    }
-    
-    // Make the next code more readable.
-    const int16_t row = line - currentCodeLine;
-    const int16_t prevRow = prevLine - currentCodeLine;
-
-    // If the line is out of bounds, but we've printed it before:
-    if(row < 0 || row > codeHeight) {
-        // Do thing hehe
-        // return;
+    for(uint16_t i = codeLines[currentCodeLine + from]; i < codeLines[currentCodeLine + to]; i++) {
+        wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[i])));
+        waddch(codeWin, brainfuckCode[i]);
+        wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[i])));
     }
 
-    // Calculate the column of the character.
-    uint16_t col = codeIndex - codeLines[line];
-
-    // Print the previously selected character in the normal color.
-    wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
-    mvwaddch(codeWin, prevRow, prevCol, brainfuckCode[prevIndex]);
-    wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
-
-    // Print the newly selected character in the selected color pair.
-    wattron(codeWin, COLOR_PAIR(RUNNING_PAIR));
-    mvwaddch(codeWin, row, col, brainfuckCode[codeIndex]);
-    wattroff(codeWin, COLOR_PAIR(RUNNING_PAIR));
-
-    prevIndex = codeIndex;
-    prevLine = line;
-    prevCol = col;
-
-    wrefresh(codeWin);
 }
 
 uint8_t GetCharColor(char c) {
