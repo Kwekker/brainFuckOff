@@ -50,7 +50,7 @@ char InterpretNextChar(char* nextChar) {
     // Store the char because the index might change.
     char codeChar = strippedCode[strippedIndex];
 
-    switch(codeChar) {
+    switch(codeChar & NO_BREAKPOINT_bm) {
         case '+':
             memory[memoryIndex]++;
             break;
@@ -198,6 +198,9 @@ uint16_t StripCode(char* code) {
                 // Continue to the next character.
                 strippedIndex += 2;
             }
+
+            // Set all debug chars's debug bit to 1.
+            else if(code[codeIndex] == '#') strippedCode[strippedIndex] = '#' | BREAKPOINT_bm;
 
             strippedIndex++;
         }

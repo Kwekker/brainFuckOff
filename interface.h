@@ -11,4 +11,6 @@ void UpdateCode(uint16_t index);
 void UpdateMemory(uint8_t* memory, uint16_t index);
 void OutputChar(char outChar);
 
+uint16_t InterfaceGetCodeIndex(uint16_t mouseY, uint16_t mouseX);
+
 #endif // _INTERFACE_H_

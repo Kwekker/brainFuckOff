@@ -39,6 +39,10 @@ uint8_t InitDebug(const char* brainfuckFile, uint16_t outputHeight) {
     refresh();      // Refresh the screen once before doing anything.
     getch();        // Get rid of the initial \n.
 
+    // Enable mouse things (useful for setting breakpoints).
+    mousemask(BUTTON1_CLICKED, NULL);
+
+
     InitInterface(outputHeight, brainfuckCode);
 
     return 0;
@@ -50,6 +54,11 @@ void EndDebug(void) {
 
 
 void RunDebug(void) {
+    MEVENT mouseEvent;
+
+    if(getmouse(&mouseEvent) == OK) {
+        InterfaceGetCodeIndex(mouseEvent.y, mouseEvent.x);
+    }
 
     switch(state) {
         case STATE_IDLE: {
@@ -72,7 +81,7 @@ void RunDebug(void) {
             char nextChar;
 
             // Run until the character changes.
-            char newChar = InterpretNextChar(&nextChar);
+            char newChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
             UpdateCode(GetCodeIndex());
             UpdateMemory(GetMemory(), GetMemIndex());
 
@@ -87,7 +96,7 @@ void RunDebug(void) {
             UpdateCode(GetCodeIndex());
             UpdateMemory(GetMemory(), GetMemIndex());
 
-            if(nextChar == '#' || getch() != ERR) state = STATE_IDLE;
+            if(nextChar & BREAKPOINT_bm || getch() != ERR) state = STATE_IDLE;
             break;
         }
 
@@ -95,7 +104,7 @@ void RunDebug(void) {
             char nextChar;
             InterpretNextChar(&nextChar);
 
-            if(nextChar == '#' || getch() != ERR) state = STATE_IDLE;
+            if(nextChar & BREAKPOINT_bm || getch() != ERR) state = STATE_IDLE;
             break;
         }
 

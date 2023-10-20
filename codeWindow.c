@@ -155,6 +155,11 @@ void ReprintCode(void) {
     }
 }
 
+uint16_t InterfaceGetCodeIndex(uint16_t mouseY, uint16_t mouseX) {
+    // Return the index of the clicked character.
+}
+
+
 uint8_t GetCharColor(char c) {
     switch(c) {
         case '[':

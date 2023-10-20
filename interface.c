@@ -90,7 +90,6 @@ void EndInterface(void) {
     endwin();
 }
 
-
 static uint16_t memByteCols;
 static uint16_t memByteRows = 0;
 void UpdateMemory(uint8_t* memory, uint16_t memIndex) {
