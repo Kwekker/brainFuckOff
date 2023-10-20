@@ -2,13 +2,13 @@
 #define _INTERPRETER_H_
 
 
-#define INTERPRETER_OUT_OF_MEMORY -2
-#define INTERPRETER_MEMORY_OUT_OF_BOUNDS -1
-#define INTERPRETER_EOF 0
+#define INTERPRETER_EOF -1
+#define INTERPRETER_MEMORY_OUT_OF_BOUNDS -2
+#define INTERPRETER_OUT_OF_MEMORY -3
+#define INTERPRETER_LEAK -4
 
-
-char* InitInterpreter(const char* inFile, void (*output)(char out));
-char InterpretNextChar(void);
+char* InitInterpreter(const char* inFile, uint8_t* requestInput, void (*output)(char out));
+char InterpretNextChar(char* nextChar);
 void ProvideInput(uint8_t input);
 
 uint16_t GetCodeIndex(void);

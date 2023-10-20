@@ -1,11 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <ncurses.h>
 
 #include "interpreter.h"
-#include "interface.h"
+#include "debugger.h"
 
 
-// TODO: Window scrolling.
 // TODO: Debugger.
 
 
@@ -16,46 +16,14 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // Initialize the interpreter.
-    char* brainfuckCode = InitInterpreter(argv[1], OutputChar);
-    if(brainfuckCode == NULL) {
-        fprintf(stderr, "\nCould not open/read file.\n\n");
-        return -1;
+    if(InitDebug(argv[1], 16)) {
+        return EXIT_FAILURE;
     }
-
-    uint8_t running = 1;
-
-    // Start the cursor up at the first valid Brainfuck character.
-    InitInterface(20, brainfuckCode);
-    // UpdateCode(GetCodeIndex());
 
     while(1) {
-
-
-        if(running) {
-            UpdateCode(GetCodeIndex());
-            UpdateMemory(GetMemory(), GetMemIndex());
-            getch();
-            switch(InterpretNextChar()) {
-                case '#':
-                    getch();
-                    break;
-
-                case ',':
-                    break;
-
-                case INTERPRETER_EOF:
-                    running = 0;
-                    break;
-
-                case INTERPRETER_MEMORY_OUT_OF_BOUNDS:
-                case INTERPRETER_OUT_OF_MEMORY:
-                    return -1;
-            }
-        
-        }
+        RunDebug();
     }
 
-    EndInterface();
+    EndDebug();
     return 0;
 }

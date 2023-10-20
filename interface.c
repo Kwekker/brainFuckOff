@@ -30,11 +30,6 @@ static uint16_t CalculateMemoryWidth(uint16_t terminalWidth);
 void InitInterface(uint16_t outputHeight, char* code) {
     char* brainfuckCode;
 
-    initscr();      // Init ncurses.
-    refresh();      // Refresh the screen once before doing anything.
-    noecho();       // Don't echo input.
-    curs_set(0);    // Hide cursor.
-
     InitColorPairs();
 
     brainfuckCode = code;

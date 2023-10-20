@@ -6,3 +6,6 @@ brainfuckoff
 
 # Ignore all brainfuck testfiles that I didn't make.
 bftest/
+
+# Ignore log files.
+*.log

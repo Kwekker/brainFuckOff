@@ -15,7 +15,7 @@ static uint16_t currentCodeLine = 0;
 
 static void StoreCodeLine(uint16_t index);
 static uint8_t GetCharColor(char c);
-static void ReprintCodeLines(int16_t from, uint16_t to);
+static void ReprintCode(void);
 static void FindAllCodeLines(void);
 
 
@@ -30,13 +30,10 @@ void InitCodeWindow(WINDOW* window, char* code) {
     codeHeight = getmaxy(window);
     brainfuckCode = code;
 
-    fprintf(stderr, "start %d high\n", codeHeight);
-
     FindAllCodeLines();
-    ReprintCodeLines(0, codeHeight);
+    ReprintCode();
 
     wrefresh(codeWin);
-    fprintf(stderr, "start\n");
 }
 
 
@@ -62,36 +59,22 @@ void UpdateCode(uint16_t codeIndex) {
     mvwaddch(codeWin, prevRow, prevCol, brainfuckCode[prevIndex]);
     wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
 
-    fprintf(stderr, "yes %d %d %d %d\n", codeIndex, row, line, currentCodeLine);
 
 
     // If the line is out of bounds, but we've printed it before:
     // Scroll the screen down.
     if((row < CODE_TOP_MARGIN && line > CODE_TOP_MARGIN) || row < 0) {
-        const uint16_t prevCodeLine = currentCodeLine;
-
         // Make sure that adding the margin does not put the first line lower than the top of the window.
         if(line <= CODE_TOP_MARGIN) currentCodeLine = 0;
         else currentCodeLine = line - CODE_TOP_MARGIN;
 
-        scrollok(codeWin, 1);
-        wscrl(codeWin, currentCodeLine - prevCodeLine);
-        scrollok(codeWin, 0);
-
-        ReprintCodeLines(0, prevCodeLine - currentCodeLine);
+        ReprintCode();
     }
 
     // Scroll the screen up.
     else if(row > codeHeight - CODE_BOTTOM_MARGIN) {
-        const uint16_t prevCodeLine = currentCodeLine;
-
         currentCodeLine = line - codeHeight + CODE_BOTTOM_MARGIN;
-
-        scrollok(codeWin, 1);
-        wscrl(codeWin, currentCodeLine - prevCodeLine);
-        scrollok(codeWin, 0);
-
-        ReprintCodeLines(prevCodeLine + codeHeight - currentCodeLine, codeHeight);
+        ReprintCode();
     }
 
 
@@ -140,40 +123,36 @@ void FindAllCodeLines(void) {
             codeIndex++;
         }
     }
+
+    StoreCodeLine(codeIndex);
 }
 
-
 void StoreCodeLine(uint16_t index) {
-    fprintf(stderr, "codeLines[%d] = %d;\n", codeLinesAmount, index);
+    fprintf(stderr, "[%d] = %d\n", codeLinesAmount, index);
     codeLines[codeLinesAmount++] = index;
 
     // Reallocate codeLines if it too big.
     if(codeLinesAmount >= codeLinesArraySize) {
         codeLinesArraySize += codeHeight;
-        fprintf(stderr, "new size %d", codeLinesArraySize);
         codeLines = (uint16_t*) realloc(codeLines, codeLinesArraySize * sizeof(uint16_t));
     }
 }
 
 
-// Prints lines from `from` to `to` in rows (not lines).
-void ReprintCodeLines(int16_t from, uint16_t to) {
-    // Make sure to not try to print outside the code window.
-    if(from < 0) from = 0;
-    if(to > codeLinesAmount) to = codeLinesAmount - 1;
-    wmove(codeWin, from, 0);
+// Prints lines from `from` to `to` in lines (not rows).
+void ReprintCode(void) {
+    wclear(codeWin);
+    wmove(codeWin, 0, 0);
+    uint16_t codeIndex = codeLines[currentCodeLine];
+    int endOfLine = 0;
 
-    for(uint16_t i = codeLines[currentCodeLine + from]; i < codeLines[currentCodeLine + to]; i++) {
-        if(brainfuckCode[i] == '\0') return;
+    while(!endOfLine && brainfuckCode[codeIndex] != '\0') {
+        wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[codeIndex])));
+        endOfLine = waddch(codeWin, brainfuckCode[codeIndex]);
+        wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[codeIndex])));
 
-        wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[i])));
-        int err = waddch(codeWin, brainfuckCode[i]);
-        wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[i])));
-
-
-        if(err) return;
+        codeIndex++;
     }
-
 }
 
 uint8_t GetCharColor(char c) {

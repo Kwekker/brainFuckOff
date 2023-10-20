@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include "codeWindow.h"
 
-
-
 void InitInterface(uint16_t outputHeight, char* code);
 void EndInterface(void);
 

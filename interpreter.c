@@ -27,14 +27,16 @@ static void (*OutFunction)(char out);
 
 static char *FileToBuffer(const char *fileName);
 static uint16_t StripCode(char* code);
+static uint8_t* requestInput;
 
 
-char* InitInterpreter(const char* inFileName, void (*Output)(char out)) {
+char* InitInterpreter(const char* inFileName, uint8_t* inputRequested, void (*Output)(char out)) {
     fullCode = FileToBuffer(inFileName);
     if(fullCode == NULL) return NULL;
     strippedLength = StripCode(fullCode);
    
     OutFunction = Output;
+    requestInput = inputRequested;
 
     memory = (uint8_t*)malloc(INITIAL_MEMORY_SIZE);
     memset(memory, 0, memorySize);
@@ -43,7 +45,7 @@ char* InitInterpreter(const char* inFileName, void (*Output)(char out)) {
 }
 
 
-char InterpretNextChar(void) {
+char InterpretNextChar(char* nextChar) {
 
     // Store the char because the index might change.
     char codeChar = strippedCode[strippedIndex];
@@ -52,6 +54,7 @@ char InterpretNextChar(void) {
         case '+':
             memory[memoryIndex]++;
             break;
+
         case '-':
             memory[memoryIndex]--;
             break;
@@ -72,6 +75,7 @@ char InterpretNextChar(void) {
                 memset(memory + memorySize - INITIAL_MEMORY_SIZE, 0x00, INITIAL_MEMORY_SIZE);
             }
             break;
+
         case '<':
             if(memoryIndex == 0) {
                 return INTERPRETER_MEMORY_OUT_OF_BOUNDS;
@@ -81,12 +85,13 @@ char InterpretNextChar(void) {
 
         case '.':
             OutFunction(memory[memoryIndex]);
-            // fprintf(stderr, "[%d][%d](%02x)", strippedIndex, memoryIndex, memory[memoryIndex]);
             break;
+
         case ',':
-            // Just return a comma if we need input.
             // The calling function should now consider giving an input using ProvideInput().
             // Execution will not continue before an input is given.
+            *requestInput = 1;
+            if(nextChar) *nextChar = strippedCode[strippedIndex + 1];
             return ',';
 
         case '[':
@@ -94,19 +99,20 @@ char InterpretNextChar(void) {
             if(memory[memoryIndex] == 0)
                 strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
             strippedIndex += 2;
-
             break;
+
         case ']':
             // Set the index to the stored index of the corresponding bracket.
             if(memory[memoryIndex] != 0)
                 strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
             strippedIndex += 2;
             break;
+
         case '#':
             break;
 
         default:
-            return INTERPRETER_EOF;
+            return INTERPRETER_LEAK;
         
     }
     strippedIndex++;
@@ -114,6 +120,7 @@ char InterpretNextChar(void) {
         return INTERPRETER_EOF;
     }
 
+    if(nextChar) *nextChar = strippedCode[strippedIndex];
     return codeChar;
 }
 
