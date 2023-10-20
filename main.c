@@ -23,7 +23,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-
     uint8_t running = 1;
 
     // Start the cursor up at the first valid Brainfuck character.

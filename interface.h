@@ -2,14 +2,7 @@
 #define _INTERFACE_H_
 
 #include <stdint.h>
-
-// The amount of extra lines to scroll down
-// when the code pointer is above the current code screen.
-#define CODE_TOP_MARGIN 2
-
-// The amount of extra lines to scroll up
-// when the code pointer is under the current code screen.
-#define CODE_BOTTOM_MARGIN 2
+#include "codeWindow.h"
 
 
 

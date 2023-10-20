@@ -34,7 +34,6 @@ char* InitInterpreter(const char* inFileName, void (*Output)(char out)) {
     if(fullCode == NULL) return NULL;
     strippedLength = StripCode(fullCode);
    
-
     OutFunction = Output;
 
     memory = (uint8_t*)malloc(INITIAL_MEMORY_SIZE);
@@ -105,6 +104,9 @@ char InterpretNextChar(void) {
             break;
         case '#':
             break;
+
+        default:
+            return INTERPRETER_EOF;
         
     }
     strippedIndex++;
@@ -149,6 +151,8 @@ uint16_t StripCode(char* code) {
         }
         c++;
     }
+    // Room for a terminating \0.
+    strippedSize++;
 
     // Allocate the arrays.
     strippedCode = (char *) malloc(strippedSize * sizeof(char));
@@ -192,6 +196,8 @@ uint16_t StripCode(char* code) {
         }
         codeIndex++;
     }
+
+    strippedCode[strippedIndex] = '\0';
     return strippedSize;
 }
 

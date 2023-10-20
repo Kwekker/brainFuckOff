@@ -4,25 +4,11 @@
 #include <sys/ioctl.h>
 
 #include "interface.h"
+#include "color.h"
 
 
 #define DEBUG_WINDOW_HEIGHT 8
 #define INPUT_WINDOW_HEIGHT 2
-
-// Brainfuck character pairs
-#define BRACKET_PAIR    1
-#define MOVER_PAIR      2
-#define CHANGER_PAIR    3
-#define INOUT_PAIR      4
-#define COMMENT_PAIR    5
-#define RUNNING_PAIR    6
-
-#define MEM_IDLE_PAIR   7
-#define MEM_CURSOR_PAIR 8
-#define MEM_USED_PAIR   9
-#define MEM_INDEX_PAIR  10
-
-#define COLOR_GREY      8
 
 static uint16_t memWidth;
 static uint16_t memHeight;
@@ -36,53 +22,22 @@ static WINDOW *memWin;
 static WINDOW *debugWin;
 static WINDOW *inputWin;
  
-static char* brainfuckCode;
-static uint16_t* codeLines;
-
 static void InitMemoryWindow(void);
 static void PrintNewMemoryRow(void);
 static uint16_t CalculateMemoryWidth(uint16_t terminalWidth);
 
-static void InitCodeWindow(void);
-static uint8_t GetCharColor(char c);
-void PrintNewLinesToIndex(uint16_t index);
-void ReprintCodeLines(uint16_t from, uint16_t to);
-
-
 
 void InitInterface(uint16_t outputHeight, char* code) {
+    char* brainfuckCode;
+
     initscr();      // Init ncurses.
     refresh();      // Refresh the screen once before doing anything.
     noecho();       // Don't echo input.
     curs_set(0);    // Hide cursor.
 
+    InitColorPairs();
+
     brainfuckCode = code;
-
-    // Initialize all the colors.
-    start_color();
-
-    init_pair(BRACKET_PAIR, COLOR_MAGENTA, COLOR_BLACK);
-    init_pair(MOVER_PAIR,   COLOR_YELLOW, COLOR_BLACK);
-    init_pair(INOUT_PAIR,   COLOR_CYAN, COLOR_BLACK);
-    init_pair(RUNNING_PAIR, COLOR_WHITE, COLOR_RED);
-    init_pair(MEM_CURSOR_PAIR, COLOR_WHITE, COLOR_CYAN);
-    init_pair(MEM_USED_PAIR, COLOR_WHITE, COLOR_BLACK);
-    init_pair(MEM_INDEX_PAIR, COLOR_GREEN, COLOR_BLACK);
-
-    // Not every terminal supports custom colors apparently (cringe).
-    if(can_change_color()) {
-        init_color(COLOR_GREY, 400, 400, 400);
-
-        init_pair(COMMENT_PAIR, COLOR_GREY, COLOR_BLACK);
-        init_pair(CHANGER_PAIR, COLOR_WHITE, COLOR_BLACK);
-        init_pair(MEM_IDLE_PAIR, COLOR_GREY, COLOR_BLACK);
-    }
-    else {
-        init_pair(COMMENT_PAIR, COLOR_WHITE, COLOR_BLACK);
-        init_pair(CHANGER_PAIR, COLOR_BLUE, COLOR_BLACK);
-        init_pair(MEM_IDLE_PAIR, COLOR_BLUE, COLOR_BLACK);
-    }
-
 
     // Get terminal size.
     // Resizing is not supported because I prefer not having headaches.
@@ -131,7 +86,7 @@ void InitInterface(uint16_t outputHeight, char* code) {
     scrollok(outputWin, 1);
 
     // Print code into the code window.
-    InitCodeWindow();
+    InitCodeWindow(codeWin, brainfuckCode);
     InitMemoryWindow();
 
 }
@@ -218,192 +173,6 @@ static uint16_t CalculateMemoryWidth(uint16_t terminalWidth) {
 
 // ######## The code window ########
 // This should probably go into a seperate file, but that is a lot of work, and git blame stops working.
-
-// codeLines is an array that stores the first index of every line in the code. Lines include newlines, but also width overflows.
-static uint16_t* codeLines;
-static uint16_t codeLinesAmount;
-static uint16_t codeLinesArraySize;
-static uint16_t currentCodeLine = 0;
-static void StoreCodeLine(uint16_t index);
-
-
-
-// Print the first window of code.
-void InitCodeWindow(void) {
-    // Init the codeLines array with like idk 2 times the window height.
-    codeLinesArraySize = 2 * codeHeight;
-    codeLines = (uint16_t*) malloc(codeLinesArraySize * sizeof(uint16_t));
-
-    // Print the code up to the end of the window.
-    char* codePtr = brainfuckCode;
-    wmove(codeWin, 0, 0);
-
-    while(*codePtr) {
-
-        // Store the line index.
-        if(getcurx(codeWin) == 0) StoreCodeLine(codePtr - brainfuckCode);
-
-        wattron(codeWin, COLOR_PAIR(GetCharColor(*codePtr)));
-        int failed = waddch(codeWin, *codePtr);
-        wattroff(codeWin, COLOR_PAIR(GetCharColor(*codePtr)));
-
-        if(failed == ERR) break;
-
-        codePtr++;
-    }
-
-    // Store the last (out of window) codeLine.
-    StoreCodeLine(codePtr - brainfuckCode + 1);
-
-    wrefresh(outputWin);
-    wrefresh(codeWin);
-}
-
-
-void UpdateCode(uint16_t codeIndex) {
-    static uint16_t prevIndex = -1;
-    static uint16_t prevLine = -1;
-    static uint16_t prevCol = -1;
-
-    uint16_t line = 0;
-
-    // Find the line of the current character through codeLines.
-    while(codeLines[line] <= codeIndex && line < codeLinesAmount) {
-        line++;
-    }
-    line--;
-
-    // If we haven't printed this line before, scroll the window until it's visible.
-    if(line >= codeLinesAmount - 1) {
-        wprintw(outputWin, "char is %c\n", brainfuckCode[codeIndex]);
-        wrefresh(outputWin);
-        PrintNewLinesToIndex(codeIndex);
-        line = codeLinesAmount - 2;
-    }
-    
-    // Make the next code more readable.
-    int16_t row = line - currentCodeLine;
-    const int16_t prevRow = prevLine - currentCodeLine;
-
-    // Print the previously selected character in the normal color.
-    wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
-    mvwaddch(codeWin, prevRow, prevCol, brainfuckCode[prevIndex]);
-    wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[prevIndex])));
-
-    // If the line is out of bounds, but we've printed it before:
-    // Scroll the screen down.
-    if(row < 0) {
-        const uint16_t prevCodeLine = currentCodeLine;
-
-        // Make sure that adding the margin does not put the first line lower than the top of the window.
-        if(line <= CODE_TOP_MARGIN) currentCodeLine = 0;
-        else currentCodeLine = line - CODE_TOP_MARGIN;
-
-        row = line - currentCodeLine;
-        scrollok(codeWin, 1);
-        wscrl(codeWin, currentCodeLine - prevCodeLine);
-        scrollok(codeWin, 0);
-        ReprintCodeLines(0, prevCodeLine - currentCodeLine);
-    }
-
-
-    // Calculate the column of the character.
-    uint16_t col = codeIndex - codeLines[line];
-
-    
-    // Print the newly selected character in the selected color pair.
-    wattron(codeWin, COLOR_PAIR(RUNNING_PAIR));
-    mvwaddch(codeWin, row, col, brainfuckCode[codeIndex]);
-    wattroff(codeWin, COLOR_PAIR(RUNNING_PAIR));
-
-    prevIndex = codeIndex;
-    prevLine = line;
-    prevCol = col;
-
-    wrefresh(codeWin);
-}
-
-void PrintNewLinesToIndex(uint16_t index) {
-
-
-    // Start at the first character of the last line.
-    // This is always the line after the lastly printed line.
-    uint16_t codeIndex = codeLines[codeLinesAmount - 1];
-    wprintw(outputWin, "%d %d\n", index, codeIndex);
-    wrefresh(outputWin);
-
-    
-    // Print lines.
-    while(codeIndex <= index) {
-        // Scroll down one line.
-        scrollok(codeWin, 1);
-        scroll(codeWin);
-        scrollok(codeWin, 0);
-        wmove(codeWin, getmaxy(codeWin) - 1, 0);
-
-        // Print one line.
-        int endOfLine = 0;
-        while(!endOfLine) {
-            wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[codeIndex])));
-            endOfLine = waddch(codeWin, brainfuckCode[codeIndex]);
-            wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[codeIndex])));
-            codeIndex++;
-        }
-
-        // Store the next line's index.
-        currentCodeLine++;
-        StoreCodeLine(codeIndex);
-    }
-    
-    wrefresh(codeWin);
-    wrefresh(outputWin);
-}
-
-void StoreCodeLine(uint16_t index) {
-    codeLines[codeLinesAmount++] = index;
-
-    // Reallocate codeLines if it too big.
-    if(codeLinesAmount + 1 == codeLinesArraySize) {
-        codeLinesArraySize += codeHeight;
-        codeLines = (uint16_t*) realloc(codeLines, codeLinesArraySize);
-    }
-}
-
-
-// Prints lines from `from` to `to` in rows (not lines).
-void ReprintCodeLines(uint16_t from, uint16_t to) {
-    wmove(codeWin, from, 0);
-
-    for(uint16_t i = codeLines[currentCodeLine + from]; i < codeLines[currentCodeLine + to]; i++) {
-        wattron(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[i])));
-        waddch(codeWin, brainfuckCode[i]);
-        wattroff(codeWin, COLOR_PAIR(GetCharColor(brainfuckCode[i])));
-    }
-
-}
-
-uint8_t GetCharColor(char c) {
-    switch(c) {
-        case '[':
-        case ']':
-            return BRACKET_PAIR;
-
-        case '>':
-        case '<':
-            return MOVER_PAIR;
-
-        case '+':
-        case '-':
-            return CHANGER_PAIR;
-
-        case '.':
-        case ',':
-            return INOUT_PAIR;
-
-        default:
-            return COMMENT_PAIR;
-    }
-}
 
 // Output 1 character to the output window.
 void OutputChar(char outChar) {
