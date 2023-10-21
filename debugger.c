@@ -78,14 +78,19 @@ void RunDebug(void) {
     switch(state) {
         case STATE_IDLE: {
             if(prevState != STATE_IDLE) {
+                SetDebugStatus("idle");
                 UpdateCode(GetCodeIndex(), 1);
                 UpdateMemory(GetMemory(), GetMemIndex());
             }
+            
 
             int inKey = getch();
             if(inKey != ERR) HandleKeyPress(inKey); 
             break;
         }
+
+        // Very, VERY cursed line outside of the cases. I am so sorry.
+        prevState = state;
 
         case STATE_STEP:
             InterpretNextChar(NULL);
@@ -102,7 +107,7 @@ void RunDebug(void) {
             UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
 
-            if(nextChar != newChar || getch() != ERR) state = STATE_IDLE;
+            if(nextChar != newChar || getch() == ' ') state = STATE_IDLE;
 
             break;
         }
@@ -113,7 +118,7 @@ void RunDebug(void) {
             UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
 
-            if(nextChar & BREAKPOINT_bm || getch() != ERR) state = STATE_IDLE;
+            if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
             break;
         }
 
@@ -121,7 +126,7 @@ void RunDebug(void) {
             char nextChar;
             InterpretNextChar(&nextChar);
 
-            if(nextChar & BREAKPOINT_bm || getch() != ERR) state = STATE_IDLE;
+            if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
             break;
         }
 
@@ -131,29 +136,27 @@ void RunDebug(void) {
             UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
 
-            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() != ERR)
+            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
                 state = STATE_IDLE;
         }
         case STATE_EXIT_LOOP_FAST: {
             char nextChar;
             InterpretNextChar(&nextChar);
 
-            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() != ERR)
+            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
                 state = STATE_IDLE;
         }
 
         default:
             break;
     }
-
-    prevState = state;
 }
 
 void HandleKeyPress(int key) {
-    fprintf(stderr, "key %d\n", key);
     switch(key) {
         case ' ':
             state = STATE_RUN;
+            SetDebugStatus("running");
             break;
         
         case '\n':
@@ -171,6 +174,7 @@ void HandleKeyPress(int key) {
         case ']':
             state = STATE_EXIT_LOOP;
             initialLoopDepth = GetLoopDepth();
+            SetDebugStatus("exiting loop");
             break;
         
         case '}':

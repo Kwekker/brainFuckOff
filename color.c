@@ -15,7 +15,7 @@ void InitColorPairs(void) {
     init_pair(RUNNING_PAIR,     COLOR_WHITE,    COLOR_RED);
     init_pair(BREAKPOINT_PAIR,  COLOR_GREEN,    COLOR_BLACK);
 
-    init_pair(MEM_CURSOR_PAIR,  COLOR_WHITE,    COLOR_CYAN);
+    init_pair(MEM_CURSOR_PAIR,  COLOR_BLACK,    COLOR_CYAN);
     init_pair(MEM_USED_PAIR,    COLOR_WHITE,    COLOR_BLACK);
     init_pair(MEM_INDEX_PAIR,   COLOR_GREEN,    COLOR_BLACK);
 

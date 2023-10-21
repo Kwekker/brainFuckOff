@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "codeWindow.h"
+#include "debugWindow.h"
 
 #define DEBUG_WINDOW_HEIGHT 1
 #define INPUT_WINDOW_HEIGHT 2

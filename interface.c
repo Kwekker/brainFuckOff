@@ -75,13 +75,13 @@ void InitInterface(uint16_t outputHeight, char* code) {
 
 #ifdef TEST_WINDOWS
     // Code that fills the windows up with characters so you know which one is where.
-    wattrset(debugWin, COLOR_PAIR(DEBUG_PAIR));
     for(uint16_t i = 0; i < 10000; i++) wprintw(debugWin, "DEBUG");
     for(uint16_t i = 0; i < 10000; i++) wprintw(codeWin, "CODE");
     for(uint16_t i = 0; i < 10000; i++) wprintw(outputWin, "OUTPUT");
     for(uint16_t i = 0; i < 10000; i++) wprintw(memWin, "MEMORY");
     for(uint16_t i = 0; i < 10000; i++) wprintw(inputWin, "INPUT");
 #endif
+
 
     // Refresh all of the windows at the beginning.
     wrefresh(codeWin);
@@ -96,6 +96,7 @@ void InitInterface(uint16_t outputHeight, char* code) {
 
     // Print code into the code window.
     InitCodeWindow(codeWin, brainfuckCode);
+    InitDebugWindow(debugWin);
     InitMemoryWindow();
 
 }
