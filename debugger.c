@@ -71,9 +71,25 @@ void RunDebug(void) {
         UpdateCode(clickedIndex, 0);
     }
 
+    static enum state prevState = STATE_STEP;
+    static uint8_t prevInputRequested = 0;
+
+    if(inputRequested) {
+        if(!prevInputRequested) {
+            prevInputRequested = 1;
+            DebugInputRequested(1);
+        }
+        char inChar = getch();
+        if(inChar == ERR) return;
+
+        OutputChar(inChar);
+        ProvideInput(inChar);
+        inputRequested = 0;
+        return;
+    }
+
     // TODO: Check if end of code has been reached.
 
-    static enum state prevState = STATE_STEP;
 
     switch(state) {
         case STATE_IDLE: {
@@ -82,7 +98,7 @@ void RunDebug(void) {
                 UpdateCode(GetCodeIndex(), 1);
                 UpdateMemory(GetMemory(), GetMemIndex());
             }
-            
+    
 
             int inKey = getch();
             if(inKey != ERR) HandleKeyPress(inKey); 
