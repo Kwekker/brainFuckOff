@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include "codeWindow.h"
 
+#define DEBUG_WINDOW_HEIGHT 1
+#define INPUT_WINDOW_HEIGHT 2
+
 void InitInterface(uint16_t outputHeight, char* code);
 void EndInterface(void);
 

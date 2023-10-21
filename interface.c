@@ -6,10 +6,6 @@
 #include "interface.h"
 #include "color.h"
 
-
-#define DEBUG_WINDOW_HEIGHT 8
-#define INPUT_WINDOW_HEIGHT 2
-
 static uint16_t memWidth;
 static uint16_t memHeight;
  
@@ -39,10 +35,19 @@ void InitInterface(uint16_t outputHeight, char* code) {
     struct winsize terminal;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminal);
 
+    //* Window configuration: 
+    // (This looks very good with ligatures)
+    //  _________ 
+    // | c  | m  |  c = Code.
+    // |----|    |  m = Memory.
+    // | o  |----|  o = Output.
+    // |____|_i__|  i = Input (not always there).
+    // |____d____|  d = Debug info.
+    
     // Define the heights of the windows, which are defined as the height of the terminal
     // minus the height of the other windows, minus the height of the seperation lines.
-    codeHeight = terminal.ws_row - outputHeight - 1;
-    memHeight = terminal.ws_row - DEBUG_WINDOW_HEIGHT - INPUT_WINDOW_HEIGHT - 2;
+    codeHeight = terminal.ws_row - outputHeight - DEBUG_WINDOW_HEIGHT - 1;
+    memHeight = terminal.ws_row - INPUT_WINDOW_HEIGHT - DEBUG_WINDOW_HEIGHT - 1;
 
     // Define the width of the windows.
     // Make sure to leave room for a line between the left and right windows.
@@ -51,10 +56,10 @@ void InitInterface(uint16_t outputHeight, char* code) {
 
     // Define the windows.
     codeWin   = newwin(codeHeight, codeWidth, 0, 0);
-    outputWin = newwin(terminal.ws_row - codeHeight - 1, codeWidth, codeHeight + 1, 0);
+    outputWin = newwin(outputHeight, codeWidth, codeHeight + 1, 0);
     memWin    = newwin(memHeight, memWidth, 0, codeWidth + 1);
     inputWin  = newwin(INPUT_WINDOW_HEIGHT, memWidth, memHeight + 1, codeWidth + 1);
-    debugWin  = newwin(DEBUG_WINDOW_HEIGHT, memWidth, memHeight + INPUT_WINDOW_HEIGHT + 2, codeWidth + 1);
+    debugWin  = newwin(DEBUG_WINDOW_HEIGHT, terminal.ws_col, terminal.ws_row - DEBUG_WINDOW_HEIGHT, 0);
 
     // Print vertical window border.
     for(uint16_t i = 0; i < terminal.ws_row; i++) mvaddch(i, codeWidth, ACS_VLINE);
@@ -62,13 +67,21 @@ void InitInterface(uint16_t outputHeight, char* code) {
     // Print horizontal window borders.
     for(uint16_t i = 0; i < codeWidth; i++) mvaddch(codeHeight, i, ACS_HLINE);
     for(uint16_t i = codeWidth + 1; i < terminal.ws_col; i++) mvaddch(memHeight, i, ACS_HLINE);
-    for(uint16_t i = codeWidth + 1; i < terminal.ws_col; i++) mvaddch(memHeight + INPUT_WINDOW_HEIGHT + 1, i, ACS_HLINE);
 
     // Print cool connection characters (├ and ┤).
     mvaddch(codeHeight, codeWidth, ACS_RTEE);
     mvaddch(memHeight, codeWidth, ACS_LTEE);
-    mvaddch(memHeight + INPUT_WINDOW_HEIGHT + 1, codeWidth, ACS_LTEE);
     refresh();
+
+#ifdef TEST_WINDOWS
+    // Code that fills the windows up with characters so you know which one is where.
+    wattrset(debugWin, COLOR_PAIR(DEBUG_PAIR));
+    for(uint16_t i = 0; i < 10000; i++) wprintw(debugWin, "DEBUG");
+    for(uint16_t i = 0; i < 10000; i++) wprintw(codeWin, "CODE");
+    for(uint16_t i = 0; i < 10000; i++) wprintw(outputWin, "OUTPUT");
+    for(uint16_t i = 0; i < 10000; i++) wprintw(memWin, "MEMORY");
+    for(uint16_t i = 0; i < 10000; i++) wprintw(inputWin, "INPUT");
+#endif
 
     // Refresh all of the windows at the beginning.
     wrefresh(codeWin);
@@ -79,6 +92,7 @@ void InitInterface(uint16_t outputHeight, char* code) {
 
     // The output window needs to be able to scroll.
     scrollok(outputWin, 1);
+
 
     // Print code into the code window.
     InitCodeWindow(codeWin, brainfuckCode);

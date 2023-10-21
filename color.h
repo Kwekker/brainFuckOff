@@ -17,6 +17,8 @@
 #define MEM_USED_PAIR   10
 #define MEM_INDEX_PAIR  11
 
+#define DEBUG_PAIR      12
+
 #define COLOR_GREY      8
 
 
