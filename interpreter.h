@@ -19,6 +19,9 @@ void ProvideInput(uint8_t input);
 
 uint16_t GetCodeIndex(void);
 uint16_t GetMemIndex(void);
+uint16_t GetLoopDepth(void);
+void ToggleBreakPoint(void);
+void ToggleBreakPointAtCodeIndex(uint16_t codeIndex);
 
 // Returns a pointer to the memory array.
 uint8_t* GetMemory(void);

@@ -7,7 +7,12 @@
 
 
 // TODO: Debugger.
+// TODO:    Input Handling.
+// todo:    Reprint memory after not printing things.
 
+void outputThing(char c) {
+    printf("%c", c);
+}
 
 int main(int argc, char *argv[]) {
     

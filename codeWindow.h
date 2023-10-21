@@ -13,6 +13,8 @@
 #define CODE_BOTTOM_MARGIN 4
 
 void InitCodeWindow(WINDOW* window, char* code);
-void UpdateCode(uint16_t codeIndex);
+void UpdateCode(uint16_t codeIndex, uint8_t isCursor);
+uint16_t InterfaceGetCodeIndex(uint16_t mouseY, uint16_t mouseX);
+
 
 #endif // _CODEWINDOW_H_

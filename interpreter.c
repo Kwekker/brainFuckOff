@@ -28,6 +28,7 @@ static void (*OutFunction)(char out);
 static char *FileToBuffer(const char *fileName);
 static uint16_t StripCode(char* code);
 static uint8_t* requestInput;
+static uint16_t loopDepth = 0;
 
 
 char* InitInterpreter(const char* inFileName, uint8_t* inputRequested, void (*Output)(char out)) {
@@ -98,6 +99,8 @@ char InterpretNextChar(char* nextChar) {
             // Set the index to the stored index of the corresponding bracket.
             if(memory[memoryIndex] == 0)
                 strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
+            else loopDepth++;
+
             strippedIndex += 2;
             break;
 
@@ -105,6 +108,8 @@ char InterpretNextChar(char* nextChar) {
             // Set the index to the stored index of the corresponding bracket.
             if(memory[memoryIndex] != 0)
                 strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
+            else loopDepth--;
+
             strippedIndex += 2;
             break;
 
@@ -129,6 +134,31 @@ void ProvideInput(uint8_t input) {
     strippedIndex++;
 }
 
+void ToggleBreakPoint(void) {
+    // Toggle the breakpoint bit in the code as well as the stripped code.
+    strippedCode[strippedIndex] ^= BREAKPOINT_bm;
+    fullCode[strippedIndeces[strippedIndex]] ^= BREAKPOINT_bm;
+}
+
+void ToggleBreakPointAtCodeIndex(uint16_t codeIndex) {
+    uint16_t stripIndex = 0;
+
+    fprintf(stderr, "codeIndex %d ", codeIndex);
+
+    // Find the character in the stripped code.
+    while(strippedIndeces[stripIndex] < codeIndex) stripIndex++;
+
+    fprintf(stderr, "found a %c at %d\n", strippedCode[stripIndex], stripIndex);
+
+    // Make sure it's a brainfuck character and not a comment.
+    if(strippedCode[stripIndex] != fullCode[codeIndex]) return;
+
+    fprintf(stderr, "woo");
+
+    strippedCode[stripIndex] ^= BREAKPOINT_bm;
+    fullCode[codeIndex] ^= BREAKPOINT_bm;
+}
+
 
 // The stripper strips code that looks like this:
 // ```brainfuck
@@ -143,7 +173,7 @@ void ProvideInput(uint8_t input) {
 // `+++[0b->+++]03`
 //
 // TODO: Count the maximum depth of [loops] and malloc the stack using that number.
-// It's a bit more elegant that way, and you can nest more than 256 times.
+// TODO: It's a bit more elegant that way, and you can nest more than 256 times.
 uint16_t StripCode(char* code) {
     uint16_t strippedSize = 0;
     char* c = code;
@@ -163,7 +193,7 @@ uint16_t StripCode(char* code) {
 
     // Allocate the arrays.
     strippedCode = (char *) malloc(strippedSize * sizeof(char));
-    strippedIndeces = (uint16_t *) malloc(strippedSize * sizeof(uint16_t));
+    strippedIndeces = (uint16_t *) calloc(strippedSize, sizeof(uint16_t));
 
 
     // Go through the code and actually strip it.
@@ -177,30 +207,33 @@ uint16_t StripCode(char* code) {
             strippedCode[strippedIndex] = code[codeIndex];
             strippedIndeces[strippedIndex] = codeIndex;
 
-            // Push the index onto the stack if it's an opening bracket.
-            if(code[codeIndex] == '[') {
-                // Push the index onto the stack.
-                *stackPtr++ = strippedIndex;
+            // Lots of indentation happening here.
+            switch(code[codeIndex]) {
+                case '[':
+                    // Push the index onto the stack.
+                    *stackPtr++ = strippedIndex;
 
-                // Continue to next character.
-                strippedIndex += 2;
+                    // Continue to next character.
+                    strippedIndex += 2;
+                    break;
+
+                case ']':
+                    stackPtr--;
+                    // Set the index of this bracket to the corresponding index from the stack.
+                    *(uint16_t*)(strippedCode + strippedIndex + 1) = *stackPtr;
+                    // Set the index of the opposite bracket to this index.
+                    *(uint16_t*)(strippedCode + *stackPtr + 1) = strippedIndex;
+
+                    // Continue to the next character.
+                    strippedIndex += 2;
+                    break;
+
+                case '#':
+                    // Set the breakpoint bit in both the stripped and normal code.
+                    strippedCode[strippedIndex] = '#' | BREAKPOINT_bm;
+                    code[codeIndex] = '#' | BREAKPOINT_bm;
+                    break;
             }
-
-
-            // Pop an index off the stack if it's a closing bracket.
-            else if(code[codeIndex] == ']') {
-                stackPtr--;
-                // Set the index of this bracket to the corresponding index from the stack.
-                *(uint16_t*)(strippedCode + strippedIndex + 1) = *stackPtr;
-                // Set the index of the opposite bracket to this index.
-                *(uint16_t*)(strippedCode + *stackPtr + 1) = strippedIndex;
-
-                // Continue to the next character.
-                strippedIndex += 2;
-            }
-
-            // Set all debug chars's debug bit to 1.
-            else if(code[codeIndex] == '#') strippedCode[strippedIndex] = '#' | BREAKPOINT_bm;
 
             strippedIndex++;
         }
@@ -219,6 +252,10 @@ uint16_t GetCodeIndex(void) {
 
 uint16_t GetMemIndex(void) {
     return memoryIndex;
+}
+
+uint16_t GetLoopDepth(void) {
+    return loopDepth;
 }
 
 uint8_t* GetMemory(void) {

@@ -7,18 +7,26 @@
 
 #define KEY_SENTER 0x157
 
+
+// TODO: Have some global 'break on breakpoint' and 'print output' variables that can be toggled.
+// TODO: Otherwise there's going to be literally 165 different possible states.
 enum state {
     STATE_IDLE,         // Does not run. The initial and default state.
-    STATE_RUN,          // Runs to next debug char.
-    STATE_SLOW_RUN,     // Runs while updating the display with the given delay (not implemented yet).
-    STATE_RUN_INDEF,    // Doesn't stop at debug chars.
+    STATE_RUN,          // Runs while updating the display with the given delay (not implemented yet).
+    STATE_RUN_FAST,     // Runs to next breakpoint.
+    STATE_RUN_INDEF,    // Doesn't stop at breakpoint.
     STATE_STEP,         // Step one character.
     STATE_BIG_STEP,     // Just like a step but it skips all characters of the same type.
+    STATE_EXIT_LOOP,        // Run up to the end of the current brackets or a breakpoint.
+    STATE_EXIT_LOOP_FAST,   // Run up to the end of the current brackets or a breakpoint without updating the screen.
 };
 
 static enum state state = STATE_IDLE;
-static void SwitchStateByKey(int key);
+static void HandleKeyPress(int key);
 static uint8_t inputRequested = 0;
+
+// Keeps track of the initial loop depth when entering an 'exit loop' state.
+static uint16_t initialLoopDepth = 0;
 
 uint8_t InitDebug(const char* brainfuckFile, uint16_t outputHeight) {
     
@@ -56,23 +64,32 @@ void EndDebug(void) {
 void RunDebug(void) {
     MEVENT mouseEvent;
 
+    // Toggling breakpoints with the mouse.
     if(getmouse(&mouseEvent) == OK) {
-        InterfaceGetCodeIndex(mouseEvent.y, mouseEvent.x);
+        uint16_t clickedIndex = InterfaceGetCodeIndex(mouseEvent.y, mouseEvent.x);
+        ToggleBreakPointAtCodeIndex(clickedIndex);
+        UpdateCode(clickedIndex, 0);
     }
+
+    // TODO: Check if end of code has been reached.
+
+    static enum state prevState = STATE_STEP;
 
     switch(state) {
         case STATE_IDLE: {
-            UpdateCode(GetCodeIndex());
-            UpdateMemory(GetMemory(), GetMemIndex());
+            if(prevState != STATE_IDLE) {
+                UpdateCode(GetCodeIndex(), 1);
+                UpdateMemory(GetMemory(), GetMemIndex());
+            }
 
             int inKey = getch();
-            if(inKey != ERR) SwitchStateByKey(inKey); 
+            if(inKey != ERR) HandleKeyPress(inKey); 
             break;
         }
 
         case STATE_STEP:
             InterpretNextChar(NULL);
-            UpdateCode(GetCodeIndex());
+            UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
             state = STATE_IDLE;
             break;
@@ -82,7 +99,7 @@ void RunDebug(void) {
 
             // Run until the character changes.
             char newChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
-            UpdateCode(GetCodeIndex());
+            UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
 
             if(nextChar != newChar || getch() != ERR) state = STATE_IDLE;
@@ -90,17 +107,17 @@ void RunDebug(void) {
             break;
         }
 
-        case STATE_SLOW_RUN: {
+        case STATE_RUN: {
             char nextChar;
             InterpretNextChar(&nextChar);
-            UpdateCode(GetCodeIndex());
+            UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
 
             if(nextChar & BREAKPOINT_bm || getch() != ERR) state = STATE_IDLE;
             break;
         }
 
-        case STATE_RUN: {
+        case STATE_RUN_FAST: {
             char nextChar;
             InterpretNextChar(&nextChar);
 
@@ -108,25 +125,39 @@ void RunDebug(void) {
             break;
         }
 
+        case STATE_EXIT_LOOP: {
+            char nextChar;
+            InterpretNextChar(&nextChar);
+            UpdateCode(GetCodeIndex(), 1);
+            UpdateMemory(GetMemory(), GetMemIndex());
+
+            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() != ERR)
+                state = STATE_IDLE;
+        }
+        case STATE_EXIT_LOOP_FAST: {
+            char nextChar;
+            InterpretNextChar(&nextChar);
+
+            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() != ERR)
+                state = STATE_IDLE;
+        }
+
         default:
             break;
     }
 
+    prevState = state;
 }
 
-void SwitchStateByKey(int key) {
+void HandleKeyPress(int key) {
     fprintf(stderr, "key %d\n", key);
     switch(key) {
         case ' ':
-            state = STATE_SLOW_RUN;
+            state = STATE_RUN;
             break;
         
         case '\n':
-            state = STATE_RUN;
-            break;
-
-        case KEY_SENTER:
-            state = STATE_RUN_INDEF;
+            state = STATE_RUN_FAST;
             break;
 
         case KEY_RIGHT:
@@ -135,6 +166,21 @@ void SwitchStateByKey(int key) {
 
         case KEY_SRIGHT:
             state = STATE_BIG_STEP;
+            break;
+
+        case ']':
+            state = STATE_EXIT_LOOP;
+            initialLoopDepth = GetLoopDepth();
+            break;
+        
+        case '}':
+            state = STATE_EXIT_LOOP_FAST;
+            initialLoopDepth = GetLoopDepth();
+            break;
+
+        case 'd':
+            ToggleBreakPoint();
+            UpdateCode(GetCodeIndex(), 0);
             break;
     }
 }
