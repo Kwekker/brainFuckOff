@@ -25,8 +25,11 @@ void SetDebugStatus(const char* newStatus) {
 }
 
 void DebugInputRequested(uint8_t requested) {
-    if(requested) 
+    if(requested) {
+        wattron(debugWin, A_BLINK);
         mvwprintw(debugWin, 0, INPUT_REQUEST_COL, "^ Input required ^");
+        wattroff(debugWin, A_BLINK);
+    }
     else 
         mvwprintw(debugWin, 0, INPUT_REQUEST_COL, "                  ");
 

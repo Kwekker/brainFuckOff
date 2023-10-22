@@ -13,5 +13,6 @@ void EndInterface(void);
 
 void UpdateMemory(uint8_t* memory, uint16_t index);
 void OutputChar(char outChar);
+void OutputBackspaceChar(void);
 
 #endif // _INTERFACE_H_

@@ -180,11 +180,25 @@ static uint16_t CalculateMemoryWidth(uint16_t terminalWidth) {
 }
 
 
-// ######## The code window ########
+// ######## The output window ########
 // This should probably go into a seperate file, but that is a lot of work, and git blame stops working.
 
 // Output 1 character to the output window.
 void OutputChar(char outChar) {
     wprintw(outputWin, "%c", outChar);
+    wrefresh(outputWin);
+}
+
+void OutputBackspaceChar(void) {
+    // wprintw(outputWin, "heh");
+
+    if(getcurx(outputWin) == 0) {
+        mvwaddch(outputWin, getcury(outputWin) - 1, getmaxx(outputWin) - 1, ' ');
+        wmove(outputWin, getcury(outputWin) - 1, getmaxx(outputWin) - 1);
+    }
+    else {
+        wprintw(outputWin, "\b \b");
+    }
+
     wrefresh(outputWin);
 }

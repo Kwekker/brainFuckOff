@@ -24,20 +24,20 @@ static uint16_t strippedLength = 0;
 static uint16_t strippedIndex = 0;
 
 static void (*OutFunction)(char out);
+static int16_t (*RequestInput)(void);
 
 static char *FileToBuffer(const char *fileName);
 static uint16_t StripCode(char* code);
-static uint8_t* requestInput;
 static uint16_t loopDepth = 0;
 
 
-char* InitInterpreter(const char* inFileName, uint8_t* inputRequested, void (*Output)(char out)) {
+char* InitInterpreter(const char* inFileName, void (*Output)(char), int16_t(*Input)(void)) {
     fullCode = FileToBuffer(inFileName);
     if(fullCode == NULL) return NULL;
     strippedLength = StripCode(fullCode);
    
     OutFunction = Output;
-    requestInput = inputRequested;
+    RequestInput = Input;
 
     memory = (uint8_t*)malloc(INITIAL_MEMORY_SIZE);
     memset(memory, 0, memorySize);
@@ -46,7 +46,7 @@ char* InitInterpreter(const char* inFileName, uint8_t* inputRequested, void (*Ou
 }
 
 
-char InterpretNextChar(char* nextChar) {
+char InterpretNextChar(char* nextCharPtr) {
 
     // Store the char because the index might change.
     char codeChar = strippedCode[strippedIndex];
@@ -84,17 +84,6 @@ char InterpretNextChar(char* nextChar) {
             memoryIndex--;
             break;
 
-        case '.':
-            OutFunction(memory[memoryIndex]);
-            break;
-
-        case ',':
-            // The calling function should now consider giving an input using ProvideInput().
-            // Execution will not continue before an input is given.
-            *requestInput = 1;
-            if(nextChar) *nextChar = strippedCode[strippedIndex + 1];
-            return ',';
-
         case '[':
             // Set the index to the stored index of the corresponding bracket.
             if(memory[memoryIndex] == 0)
@@ -113,6 +102,23 @@ char InterpretNextChar(char* nextChar) {
             strippedIndex += 2;
             break;
 
+        case '.':
+            OutFunction(memory[memoryIndex]);
+            break;
+
+        case ',': {
+            // The calling function should now consider giving an input using ProvideInput().
+            // Execution will not continue before an input is given.
+            int16_t input = RequestInput();
+            if(input < 0) {
+                if(nextCharPtr) *nextCharPtr = strippedCode[strippedIndex + 1];
+                fprintf(stderr, "No input???\n");
+                return ',';
+            }
+            memory[memoryIndex] = (uint8_t)input;
+            break;
+        }
+
         case '#':
             break;
 
@@ -125,13 +131,8 @@ char InterpretNextChar(char* nextChar) {
         return INTERPRETER_EOF;
     }
 
-    if(nextChar) *nextChar = strippedCode[strippedIndex];
+    if(nextCharPtr) *nextCharPtr = strippedCode[strippedIndex];
     return codeChar;
-}
-
-void ProvideInput(uint8_t input) {
-    memory[memoryIndex] = input;
-    strippedIndex++;
 }
 
 void ToggleBreakPoint(void) {

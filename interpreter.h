@@ -13,7 +13,7 @@
 
 #define INTERPRETER_IS_ERROR(returnedChar) (returnedChar < 0 && returnedChar >= -4)
 
-char* InitInterpreter(const char* inFile, uint8_t* requestInput, void (*output)(char out));
+char* InitInterpreter(const char* inFile, void (*output)(char out), int16_t (*input)(void));
 char InterpretNextChar(char* nextChar);
 void ProvideInput(uint8_t input);
 
