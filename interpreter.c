@@ -87,7 +87,7 @@ char InterpretNextChar(char* nextCharPtr) {
     case '[':
         // Set the index to the stored index of the corresponding bracket.
         if(memory[memoryIndex] == 0)
-            strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
+            memcpy(&strippedIndex, strippedCode + strippedIndex + 1, sizeof(strippedIndex));
         else loopDepth++;
 
         strippedIndex += 2;
@@ -96,7 +96,7 @@ char InterpretNextChar(char* nextCharPtr) {
     case ']':
         // Set the index to the stored index of the corresponding bracket.
         if(memory[memoryIndex] != 0)
-            strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
+            memcpy(&strippedIndex, strippedCode + strippedIndex + 1, sizeof(strippedIndex));
         else loopDepth--;
 
         strippedIndex += 2;
@@ -166,10 +166,11 @@ void ToggleBreakPointAtCodeIndex(uint16_t codeIndex) {
 // +++ Set @0 to 3
 // [- > +++ <] Set @1 to 3 * 3 = 9
 // ```
-// To this: (every character is a byte) ```
+// To this: (every character is a byte)
+// ```md
 // Index: 0123456789abcd
-// Code:  +++[II->+++]II```
-//
+// Code:  +++[II->+++]II
+// ```
 // Here, II contain the index of the corresponding bracket, so it would be:
 // `+++[0b->+++]03`
 //
@@ -221,14 +222,14 @@ uint16_t StripCode(char* code) {
             case ']': 
                 stackPtr--;
                 // Set the index of this bracket to the corresponding index from the stack.
-                *(uint16_t*)(strippedCode + strippedIndex + 1) = *stackPtr;
-                
+                // Memcpy copies both bytes of the index (which is 16 bit) in the stack into the code array.
+                memcpy(strippedCode + strippedIndex + 1, stackPtr, sizeof(*stackPtr));
 
                 // Set the index of the opposite bracket to this index.
-                *(uint16_t*)(strippedCode + *stackPtr + 1) = strippedIndex;
+                memcpy(strippedCode + *stackPtr + 1, &strippedIndex, sizeof(*stackPtr));
 
                 // Continue to the next character.
-                strippedIndex += 2;
+                strippedIndex += sizeof(*stackPtr);
                 break;
 
             case '#':
@@ -275,27 +276,26 @@ char *FileToBuffer(const char *fileName) {
 
     char* buffer = NULL;
 
-    if (fp != NULL) {
+    if(fp != NULL) {
         // Go to the end of the file.
-        if (fseek(fp, 0L, SEEK_END) == 0) {
+        if(fseek(fp, 0L, SEEK_END) == 0) {
             // Get the size of the file.
             long bufsize = ftell(fp);
-            if (bufsize == -1) return NULL;
+            if(bufsize == -1) return NULL;
 
             // Allocate our buffer to that size.
             buffer = malloc(sizeof(char) * (bufsize + 1));
 
             // Go back to the start of the file.
-            if (fseek(fp, 0L, SEEK_SET) != 0) return NULL;
+            if(fseek(fp, 0L, SEEK_SET) != 0) return NULL;
 
             // Read the entire file into memory.
             size_t newLen = fread(buffer, sizeof(char), bufsize, fp);
-            if ( ferror( fp ) != 0 ) {
+            if(ferror(fp) != 0) {
                 fputs("Error reading file", stderr);
                 return NULL;
-            } else {
-                (buffer)[newLen++] = '\0'; // Just to be safe.
-            }
+            } 
+            else (buffer)[newLen++] = '\0'; // Just to be safe.
         }
         fclose(fp);
     }
