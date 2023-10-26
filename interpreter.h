@@ -2,7 +2,8 @@
 #define _INTERPRETER_H_
 
 
-// Characters become break
+// Characters become breakpoints when the breakpoint bit is set (the MSB in the byte).
+// This is what happens when an embedded systems engineer makes a C program.
 #define BREAKPOINT_bm    0x80
 #define NO_BREAKPOINT_bm 0x7f
 

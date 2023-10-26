@@ -148,7 +148,6 @@ void FindAllCodeLines(void) {
 }
 
 void StoreCodeLine(uint16_t index) {
-    fprintf(stderr, "[%d] = %d\n", codeLinesAmount, index);
     codeLines[codeLinesAmount++] = index;
 
     // Reallocate codeLines if it too big.

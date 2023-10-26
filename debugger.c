@@ -11,44 +11,33 @@
 #define INPUT_BUFFER_SIZE 1024
 
 
-// TODO: Have some global 'break on breakpoint' and 'print output' variables that can be toggled.
-// TODO: Otherwise there's going to be literally 165 different possible states.
 enum State {
     STATE_IDLE,         // Does not run. The initial and default state.
-    STATE_INPUT,        // Activates when the input key is pressed, stops when escape is pressed.
     STATE_RUN,          // Runs while updating the display with the given delay (not implemented yet).
-    STATE_RUN_FAST,     // Runs to next breakpoint.
-    STATE_RUN_INDEF,    // Doesn't stop at breakpoint.
-    STATE_STEP,         // Step one character.
-    STATE_BIG_STEP,     // Just like a step but it skips all characters of the same type.
-    STATE_EXIT_LOOP,        // Run up to the end of the current brackets or a breakpoint.
-    STATE_EXIT_LOOP_FAST,   // Run up to the end of the current brackets or a breakpoint without updating the screen.
-
-
+    STATE_BIG_STEP,     // Skips all characters of the same type.
+    STATE_EXIT_LOOP,    // Run up to the end of the current brackets or a breakpoint.
 };
 
 // I really like this C feature
 const char* stateNames[] = {
     [STATE_IDLE]            = "idle",
-    [STATE_INPUT]           = "input",
     [STATE_RUN]             = "running",
-    [STATE_RUN_FAST]        = "running",
-    [STATE_RUN_INDEF]       = "running",
-    [STATE_STEP]            = "stepping",
     [STATE_BIG_STEP]        = "stepping",
     [STATE_EXIT_LOOP]       = "exiting loop",
-    [STATE_EXIT_LOOP_FAST]  = "exiting loop",
 };
 
 static void HandleKeyPress(int key);
 static int16_t InputRequested(void);
-void InputPutChar(char put);
-void HandleTypedInputChar(int typedChar);
+static void InputPutChar(char put);
+static void HandleTypedInputChar(int typedChar);
 
 static enum State state = STATE_IDLE;
 static char inputBuffer[INPUT_BUFFER_SIZE]; // I really do not feel like making this dynamic.
 static uint16_t inputBufferSize = 0;
 static uint8_t isInputRequested = 0;
+
+static uint8_t printOutput = 1; // Replace these with bools in C23 (not using stdbool lmao).
+static uint8_t breakOnBreakpoint = 1;
 
 // Keeps track of the initial loop depth when entering an 'exit loop' state.
 static uint16_t initialLoopDepth = 0;
@@ -98,78 +87,34 @@ void RunDebug(void) {
 
 
     // TODO: Check if end of code has been reached.
-    // TODO: Keep running while input is being entered??
-    // TODO: At least something to make inputting a little bit less painful
+    // TODO: Make input a mode instead of a state.
 
+    char nextChar = '\0';
 
     switch(state) {
+
     case STATE_IDLE: {
-        int inKey = getch();
-        if(inKey != ERR) HandleKeyPress(inKey); 
+        
         break;
     }
-
-    case STATE_INPUT: {
-        int typedChar = getch();
-        HandleTypedInputChar(typedChar);
-
-        break;
-    }
-
-    case STATE_STEP:
-        InterpretNextChar(NULL);
-        UpdateCode(GetCodeIndex(), 1);
-        UpdateMemory(GetMemory(), GetMemIndex());
-        state = STATE_IDLE;
-        break;
 
     case STATE_BIG_STEP: {
-        char nextChar;
-
         // Run until the character changes.
-        char newChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
-        UpdateCode(GetCodeIndex(), 1);
-        UpdateMemory(GetMemory(), GetMemIndex());
-
-        if(nextChar != newChar || getch() == ' ') state = STATE_IDLE;
-
+        char prevChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
+        if(prevChar != nextChar) state = STATE_IDLE;
         break;
     }
 
     case STATE_RUN: {
-        char nextChar;
+        // Just run.
         InterpretNextChar(&nextChar);
-        UpdateCode(GetCodeIndex(), 1);
-        UpdateMemory(GetMemory(), GetMemIndex());
-
-        if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
-        break;
-    }
-
-    case STATE_RUN_FAST: {
-        char nextChar;
-        InterpretNextChar(&nextChar);
-
-        if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
         break;
     }
 
     case STATE_EXIT_LOOP: {
-        char nextChar;
+        // Run until the loop depth is lower than the loop depth when entering this state.
         InterpretNextChar(&nextChar);
-        UpdateCode(GetCodeIndex(), 1);
-        UpdateMemory(GetMemory(), GetMemIndex());
-
-        if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
-            state = STATE_IDLE;
-        break;
-    }
-    case STATE_EXIT_LOOP_FAST: {
-        char nextChar;
-        InterpretNextChar(&nextChar);
-
-        if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
-            state = STATE_IDLE;
+        if(GetLoopDepth() < initialLoopDepth) state = STATE_IDLE;
         break;
     }
 
@@ -177,8 +122,22 @@ void RunDebug(void) {
         break;
     }
 
-    static enum State prevState = STATE_STEP;
+    // Break on breakpoints if it's enabled.
+    if(breakOnBreakpoint && (nextChar & BREAKPOINT_bm))
+        state = STATE_IDLE;
 
+    // Print the output if it's enabled.
+    if(printOutput) {
+        UpdateCode(GetCodeIndex(), 1);
+        UpdateMemory(GetMemory(), GetMemIndex());
+    }
+
+    int inKey = getch();
+    if(inKey != ERR) HandleKeyPress(inKey);
+
+
+    // Keep track of state changes.
+    static enum State prevState = STATE_RUN;
     if(state != prevState) {
         SetDebugStatus(stateNames[state]);
 
@@ -199,11 +158,11 @@ void HandleKeyPress(int key) {
     // This is because you can't really start running when no input is provided. 
     switch(key) {
     case 'i':
-        state = STATE_INPUT;
+        //TODO: Set mode
         curs_set(1);
         break;
 
-    case 'd':
+    case 'b':
         ToggleBreakPoint();
         UpdateCode(GetCodeIndex(), 0);
         break;
@@ -216,13 +175,12 @@ void HandleKeyPress(int key) {
         state = STATE_RUN;
         SetDebugStatus("running");
         break;
-    
-    case '\n':
-        state = STATE_RUN_FAST;
-        break;
 
     case KEY_RIGHT:
-        state = STATE_STEP;
+        // Step to the next character.
+        InterpretNextChar(NULL);
+        UpdateCode(GetCodeIndex(), 1);
+        UpdateMemory(GetMemory(), GetMemIndex());
         break;
 
     case KEY_SRIGHT:
@@ -232,12 +190,14 @@ void HandleKeyPress(int key) {
     case ']':
         state = STATE_EXIT_LOOP;
         initialLoopDepth = GetLoopDepth();
-        SetDebugStatus("exiting loop");
         break;
-    
-    case '}':
-        state = STATE_EXIT_LOOP_FAST;
-        initialLoopDepth = GetLoopDepth();
+
+    case 's':
+        printOutput = !printOutput;
+        break;
+
+    case 'B':
+        breakOnBreakpoint = !breakOnBreakpoint;
         break;
     }
 }

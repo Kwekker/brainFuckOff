@@ -46,6 +46,8 @@ char* InitInterpreter(const char* inFileName, void (*Output)(char), int16_t(*Inp
 }
 
 
+// Interprets the next char, and returns it.
+// `nextCharPtr` is set to the next char that will be interpreted.
 char InterpretNextChar(char* nextCharPtr) {
 
     // Store the char because the index might change.
