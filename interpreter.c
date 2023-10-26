@@ -52,78 +52,78 @@ char InterpretNextChar(char* nextCharPtr) {
     char codeChar = strippedCode[strippedIndex];
 
     switch(codeChar & NO_BREAKPOINT_bm) {
-        case '+':
-            memory[memoryIndex]++;
-            break;
+    case '+':
+        memory[memoryIndex]++;
+        break;
 
-        case '-':
-            memory[memoryIndex]--;
-            break;
+    case '-':
+        memory[memoryIndex]--;
+        break;
 
-        case '>':
-            memoryIndex++;
-            // Allocate more memory when needed.
-            if(memoryIndex >= memorySize) {
-                memorySize += INITIAL_MEMORY_SIZE;
-                memory = (uint8_t*)realloc(memory, memorySize);
+    case '>':
+        memoryIndex++;
+        // Allocate more memory when needed.
+        if(memoryIndex >= memorySize) {
+            memorySize += INITIAL_MEMORY_SIZE;
+            memory = (uint8_t*)realloc(memory, memorySize);
 
-                if(memory == NULL) {
-                    fprintf(stderr, "Not enough memory :(\n");
-                    return INTERPRETER_OUT_OF_MEMORY;
-                }
-
-                // Fill it with 0's.
-                memset(memory + memorySize - INITIAL_MEMORY_SIZE, 0x00, INITIAL_MEMORY_SIZE);
+            if(memory == NULL) {
+                fprintf(stderr, "Not enough memory :(\n");
+                return INTERPRETER_OUT_OF_MEMORY;
             }
-            break;
 
-        case '<':
-            if(memoryIndex == 0) {
-                return INTERPRETER_MEMORY_OUT_OF_BOUNDS;
-            }
-            memoryIndex--;
-            break;
-
-        case '[':
-            // Set the index to the stored index of the corresponding bracket.
-            if(memory[memoryIndex] == 0)
-                strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
-            else loopDepth++;
-
-            strippedIndex += 2;
-            break;
-
-        case ']':
-            // Set the index to the stored index of the corresponding bracket.
-            if(memory[memoryIndex] != 0)
-                strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
-            else loopDepth--;
-
-            strippedIndex += 2;
-            break;
-
-        case '.':
-            OutFunction(memory[memoryIndex]);
-            break;
-
-        case ',': {
-            // The calling function should now consider giving an input using ProvideInput().
-            // Execution will not continue before an input is given.
-            int16_t input = RequestInput();
-            if(input < 0) {
-                if(nextCharPtr) *nextCharPtr = strippedCode[strippedIndex + 1];
-                fprintf(stderr, "No input???\n");
-                return ',';
-            }
-            memory[memoryIndex] = (uint8_t)input;
-            break;
+            // Fill it with 0's.
+            memset(memory + memorySize - INITIAL_MEMORY_SIZE, 0x00, INITIAL_MEMORY_SIZE);
         }
+        break;
 
-        case '#':
-            break;
+    case '<':
+        if(memoryIndex == 0) {
+            return INTERPRETER_MEMORY_OUT_OF_BOUNDS;
+        }
+        memoryIndex--;
+        break;
 
-        default:
-            return INTERPRETER_LEAK;
+    case '[':
+        // Set the index to the stored index of the corresponding bracket.
+        if(memory[memoryIndex] == 0)
+            strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
+        else loopDepth++;
+
+        strippedIndex += 2;
+        break;
+
+    case ']':
+        // Set the index to the stored index of the corresponding bracket.
+        if(memory[memoryIndex] != 0)
+            strippedIndex = *(uint16_t*)(strippedCode + strippedIndex + 1);
+        else loopDepth--;
+
+        strippedIndex += 2;
+        break;
+
+    case '.':
+        OutFunction(memory[memoryIndex]);
+        break;
+
+    case ',': {
+        // The calling function should now consider giving an input using ProvideInput().
+        // Execution will not continue before an input is given.
+        int16_t input = RequestInput();
+        if(input < 0) {
+            if(nextCharPtr) *nextCharPtr = strippedCode[strippedIndex + 1];
+            fprintf(stderr, "No input???\n");
+            return ',';
+        }
+        memory[memoryIndex] = (uint8_t)input;
+        break;
+    }
+
+    case '#':
+        break;
+
+    default:
+        return INTERPRETER_LEAK;
         
     }
     strippedIndex++;
@@ -210,30 +210,32 @@ uint16_t StripCode(char* code) {
 
             // Lots of indentation happening here.
             switch(code[codeIndex]) {
-                case '[':
-                    // Push the index onto the stack.
-                    *stackPtr++ = strippedIndex;
+            case '[':
+                // Push the index onto the stack.
+                *stackPtr++ = strippedIndex;
 
-                    // Continue to next character.
-                    strippedIndex += 2;
-                    break;
+                // Continue to next character.
+                strippedIndex += 2;
+                break;
 
-                case ']':
-                    stackPtr--;
-                    // Set the index of this bracket to the corresponding index from the stack.
-                    *(uint16_t*)(strippedCode + strippedIndex + 1) = *stackPtr;
-                    // Set the index of the opposite bracket to this index.
-                    *(uint16_t*)(strippedCode + *stackPtr + 1) = strippedIndex;
+            case ']': 
+                stackPtr--;
+                // Set the index of this bracket to the corresponding index from the stack.
+                *(uint16_t*)(strippedCode + strippedIndex + 1) = *stackPtr;
+                
 
-                    // Continue to the next character.
-                    strippedIndex += 2;
-                    break;
+                // Set the index of the opposite bracket to this index.
+                *(uint16_t*)(strippedCode + *stackPtr + 1) = strippedIndex;
 
-                case '#':
-                    // Set the breakpoint bit in both the stripped and normal code.
-                    strippedCode[strippedIndex] = '#' | BREAKPOINT_bm;
-                    code[codeIndex] = '#' | BREAKPOINT_bm;
-                    break;
+                // Continue to the next character.
+                strippedIndex += 2;
+                break;
+
+            case '#':
+                // Set the breakpoint bit in both the stripped and normal code.
+                strippedCode[strippedIndex] = '#' | BREAKPOINT_bm;
+                code[codeIndex] = '#' | BREAKPOINT_bm;
+                break;
             }
 
             strippedIndex++;

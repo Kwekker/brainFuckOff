@@ -103,78 +103,78 @@ void RunDebug(void) {
 
 
     switch(state) {
-        case STATE_IDLE: {
-            int inKey = getch();
-            if(inKey != ERR) HandleKeyPress(inKey); 
-            break;
-        }
+    case STATE_IDLE: {
+        int inKey = getch();
+        if(inKey != ERR) HandleKeyPress(inKey); 
+        break;
+    }
 
-        case STATE_INPUT: {
-            int typedChar = getch();
-            HandleTypedInputChar(typedChar);
+    case STATE_INPUT: {
+        int typedChar = getch();
+        HandleTypedInputChar(typedChar);
 
-            break;
-        }
+        break;
+    }
 
-        case STATE_STEP:
-            InterpretNextChar(NULL);
-            UpdateCode(GetCodeIndex(), 1);
-            UpdateMemory(GetMemory(), GetMemIndex());
+    case STATE_STEP:
+        InterpretNextChar(NULL);
+        UpdateCode(GetCodeIndex(), 1);
+        UpdateMemory(GetMemory(), GetMemIndex());
+        state = STATE_IDLE;
+        break;
+
+    case STATE_BIG_STEP: {
+        char nextChar;
+
+        // Run until the character changes.
+        char newChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
+        UpdateCode(GetCodeIndex(), 1);
+        UpdateMemory(GetMemory(), GetMemIndex());
+
+        if(nextChar != newChar || getch() == ' ') state = STATE_IDLE;
+
+        break;
+    }
+
+    case STATE_RUN: {
+        char nextChar;
+        InterpretNextChar(&nextChar);
+        UpdateCode(GetCodeIndex(), 1);
+        UpdateMemory(GetMemory(), GetMemIndex());
+
+        if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
+        break;
+    }
+
+    case STATE_RUN_FAST: {
+        char nextChar;
+        InterpretNextChar(&nextChar);
+
+        if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
+        break;
+    }
+
+    case STATE_EXIT_LOOP: {
+        char nextChar;
+        InterpretNextChar(&nextChar);
+        UpdateCode(GetCodeIndex(), 1);
+        UpdateMemory(GetMemory(), GetMemIndex());
+
+        if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
             state = STATE_IDLE;
-            break;
+        break;
+    }
+    case STATE_EXIT_LOOP_FAST: {
+        char nextChar;
+        InterpretNextChar(&nextChar);
 
-        case STATE_BIG_STEP: {
-            char nextChar;
+        if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
+            state = STATE_IDLE;
+        break;
+    }
 
-            // Run until the character changes.
-            char newChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
-            UpdateCode(GetCodeIndex(), 1);
-            UpdateMemory(GetMemory(), GetMemIndex());
-
-            if(nextChar != newChar || getch() == ' ') state = STATE_IDLE;
-
-            break;
-        }
-
-        case STATE_RUN: {
-            char nextChar;
-            InterpretNextChar(&nextChar);
-            UpdateCode(GetCodeIndex(), 1);
-            UpdateMemory(GetMemory(), GetMemIndex());
-
-            if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
-            break;
-        }
-
-        case STATE_RUN_FAST: {
-            char nextChar;
-            InterpretNextChar(&nextChar);
-
-            if(nextChar & BREAKPOINT_bm || getch() == ' ') state = STATE_IDLE;
-            break;
-        }
-
-        case STATE_EXIT_LOOP: {
-            char nextChar;
-            InterpretNextChar(&nextChar);
-            UpdateCode(GetCodeIndex(), 1);
-            UpdateMemory(GetMemory(), GetMemIndex());
-
-            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
-                state = STATE_IDLE;
-            break;
-        }
-        case STATE_EXIT_LOOP_FAST: {
-            char nextChar;
-            InterpretNextChar(&nextChar);
-
-            if(nextChar & BREAKPOINT_bm || GetLoopDepth() < initialLoopDepth || getch() == ' ')
-                state = STATE_IDLE;
-            break;
-        }
-
-        default:
-            break;
+    default:
+        break;
     }
 
     static enum State prevState = STATE_STEP;
@@ -198,47 +198,47 @@ void HandleKeyPress(int key) {
     // This switch statement does get run when an input is required, the next one does not.
     // This is because you can't really start running when no input is provided. 
     switch(key) {
-        case 'i':
-            state = STATE_INPUT;
-            curs_set(1);
-            break;
+    case 'i':
+        state = STATE_INPUT;
+        curs_set(1);
+        break;
 
-        case 'd':
-            ToggleBreakPoint();
-            UpdateCode(GetCodeIndex(), 0);
-            break;
+    case 'd':
+        ToggleBreakPoint();
+        UpdateCode(GetCodeIndex(), 0);
+        break;
     }
 
     if(isInputRequested) return;
 
     switch(key) {
-        case ' ':
-            state = STATE_RUN;
-            SetDebugStatus("running");
-            break;
-        
-        case '\n':
-            state = STATE_RUN_FAST;
-            break;
+    case ' ':
+        state = STATE_RUN;
+        SetDebugStatus("running");
+        break;
+    
+    case '\n':
+        state = STATE_RUN_FAST;
+        break;
 
-        case KEY_RIGHT:
-            state = STATE_STEP;
-            break;
+    case KEY_RIGHT:
+        state = STATE_STEP;
+        break;
 
-        case KEY_SRIGHT:
-            state = STATE_BIG_STEP;
-            break;
+    case KEY_SRIGHT:
+        state = STATE_BIG_STEP;
+        break;
 
-        case ']':
-            state = STATE_EXIT_LOOP;
-            initialLoopDepth = GetLoopDepth();
-            SetDebugStatus("exiting loop");
-            break;
-        
-        case '}':
-            state = STATE_EXIT_LOOP_FAST;
-            initialLoopDepth = GetLoopDepth();
-            break;
+    case ']':
+        state = STATE_EXIT_LOOP;
+        initialLoopDepth = GetLoopDepth();
+        SetDebugStatus("exiting loop");
+        break;
+    
+    case '}':
+        state = STATE_EXIT_LOOP_FAST;
+        initialLoopDepth = GetLoopDepth();
+        break;
     }
 }
 
@@ -247,36 +247,36 @@ void HandleTypedInputChar(int typedChar) {
     if(typedChar != ERR) fprintf(stderr, "key %x\n", typedChar);
 
     switch(typedChar) {
-        case ERR: break;
+    case ERR: break;
 
-        // Switch to idle if either Enter or Escape is pressed.
-        case '\n':
-            InputPutChar('\n');
-            // Notice the lack of a break;
-        case '\t':
-            // Tab is used to exit input mode because apparently the escape key blocks the program for an entire second.
-            if(inputBufferSize) isInputRequested = 0;
-            DebugInputRequested(0);
-            state = STATE_IDLE;
-            curs_set(0);
-            break;
-        
-        // Do not switch to idle if Shift + Enter is pressed.
-        case KEY_SENTER:
-            InputPutChar('\n');
-            break;
+    // Switch to idle if either Enter or Escape is pressed.
+    case '\n':
+        InputPutChar('\n');
+        // Notice the lack of a break;
+    case '\t':
+        // Tab is used to exit input mode because apparently the escape key blocks the program for an entire second.
+        if(inputBufferSize) isInputRequested = 0;
+        DebugInputRequested(0);
+        state = STATE_IDLE;
+        curs_set(0);
+        break;
+    
+    // Do not switch to idle if Shift + Enter is pressed.
+    case KEY_SENTER:
+        InputPutChar('\n');
+        break;
 
-        // For some fucking reason backspaces are given as 0x07 (which is BELL, btw)
-        // so I'll just list all the possibilities, just in case.
-        case 0x7:
-        case '\b':
-        case KEY_BACKSPACE:
-            InputPutChar('\b');
-            break;
+    // For some fucking reason backspaces are given as 0x07 (which is BELL, btw)
+    // so I'll just list all the possibilities, just in case.
+    case 0x7:
+    case '\b':
+    case KEY_BACKSPACE:
+        InputPutChar('\b');
+        break;
 
-        default:
-            InputPutChar(typedChar);
-            break;
+    default:
+        InputPutChar(typedChar);
+        break;
     }
 }
 

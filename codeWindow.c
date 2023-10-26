@@ -44,7 +44,7 @@ void UpdateCode(uint16_t codeIndex, uint8_t isCursor) {
     static uint16_t prevCol = -1;
 
 
-// Finding the line //
+    //* Finding the line //
 
     uint16_t line = 0;
 
@@ -59,7 +59,7 @@ void UpdateCode(uint16_t codeIndex, uint8_t isCursor) {
     const int16_t prevRow = prevLine - currentCodeLine;
 
 
-// Scrolling //
+    //* Scrolling //
 
     // If the line is out of bounds, but we've printed it before:
     // Scroll the screen down.
@@ -92,7 +92,7 @@ void UpdateCode(uint16_t codeIndex, uint8_t isCursor) {
     int16_t col = codeIndex - codeLines[line];
     
 
-// Printing //
+    //* Printing //
 
     // Set the character's color & style.
     if(isCursor) {
@@ -197,27 +197,27 @@ int GetCharAttr(char c) {
     if(c & BREAKPOINT_bm) underline = A_UNDERLINE;
 
     switch(c & NO_BREAKPOINT_bm) {
-        case '[':
-        case ']':
-            return underline | COLOR_PAIR(BRACKET_PAIR);
+    case '[':
+    case ']':
+        return underline | COLOR_PAIR(BRACKET_PAIR);
 
-        case '>':
-        case '<':
-            return underline | COLOR_PAIR(MOVER_PAIR);
+    case '>':
+    case '<':
+        return underline | COLOR_PAIR(MOVER_PAIR);
 
-        case '+':
-        case '-':
-            return underline | COLOR_PAIR(CHANGER_PAIR);
+    case '+':
+    case '-':
+        return underline | COLOR_PAIR(CHANGER_PAIR);
 
-        case '.':
-        case ',':
-            return underline | COLOR_PAIR(INOUT_PAIR);
+    case '.':
+    case ',':
+        return underline | COLOR_PAIR(INOUT_PAIR);
 
-        case '#':
-            return underline | COLOR_PAIR(BREAKPOINT_PAIR);
+    case '#':
+        return underline | COLOR_PAIR(BREAKPOINT_PAIR);
 
-        default:
-            return COLOR_PAIR(COMMENT_PAIR);
+    default:
+        return COLOR_PAIR(COMMENT_PAIR);
     }
 
 }
