@@ -37,7 +37,9 @@ static uint16_t inputBufferSize = 0;
 static uint8_t isInputRequested = 0;
 
 static uint8_t printOutput = 1; // Replace these with bools in C23 (not using stdbool lmao).
+static uint8_t printOutputDebugElement = 0;
 static uint8_t breakOnBreakpoint = 1;
+static uint8_t breakOnBreakpointDebugElement = 0;
 
 // Keeps track of the initial loop depth when entering an 'exit loop' state.
 static uint16_t initialLoopDepth = 0;
@@ -64,8 +66,14 @@ uint8_t InitDebug(const char* brainfuckFile, uint16_t outputHeight) {
     // Enable mouse things (useful for setting breakpoints).
     mousemask(BUTTON1_CLICKED, NULL);
 
-
     InitInterface(outputHeight, brainfuckCode);
+    
+    // Init the debug window.
+    printOutputDebugElement = NewDebugElement("Visual", 5);
+    SetDebugElementBool(printOutputDebugElement, printOutput);
+
+    breakOnBreakpointDebugElement = NewDebugElement("Breakpoints", 5);
+    SetDebugElementBool(breakOnBreakpointDebugElement, breakOnBreakpoint);
 
     return 0;
 }
@@ -139,7 +147,6 @@ void RunDebug(void) {
     // Keep track of state changes.
     static enum State prevState = STATE_RUN;
     if(state != prevState) {
-        SetDebugStatus(stateNames[state]);
 
         // Gotta update the interface when coming out of a state that doesn't.
         if(state == STATE_IDLE) {
@@ -169,11 +176,10 @@ void HandleKeyPress(int key) {
     }
 
     if(isInputRequested) return;
-
+    
     switch(key) {
     case ' ':
         state = STATE_RUN;
-        SetDebugStatus("running");
         break;
 
     case KEY_RIGHT:
@@ -194,10 +200,12 @@ void HandleKeyPress(int key) {
 
     case 's':
         printOutput = !printOutput;
+        SetDebugElementBool(printOutputDebugElement, printOutput);
         break;
 
     case 'B':
         breakOnBreakpoint = !breakOnBreakpoint;
+        SetDebugElementBool(breakOnBreakpointDebugElement, breakOnBreakpoint);
         break;
     }
 }
@@ -216,7 +224,6 @@ void HandleTypedInputChar(int typedChar) {
     case '\t':
         // Tab is used to exit input mode because apparently the escape key blocks the program for an entire second.
         if(inputBufferSize) isInputRequested = 0;
-        DebugInputRequested(0);
         state = STATE_IDLE;
         curs_set(0);
         break;
@@ -276,7 +283,6 @@ int16_t InputRequested(void) {
 
     if(inputBufferSize) return inputBuffer[--inputBufferSize];
 
-    DebugInputRequested(1);
     isInputRequested = 1;
     state = STATE_IDLE;
     return -1;

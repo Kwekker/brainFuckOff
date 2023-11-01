@@ -18,6 +18,8 @@
 #define MEM_INDEX_PAIR  11
 
 #define DEBUG_PAIR      12
+#define TRUE_PAIR       13
+#define FALSE_PAIR      14
 
 #define COLOR_GREY      8
 
