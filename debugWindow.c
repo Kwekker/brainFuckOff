@@ -32,8 +32,8 @@ void InitDebugWindow(WINDOW* win) {
 }
 
 uint8_t NewDebugElement(char* name, uint8_t size) {
-    // I love this feature so much.
-    element_t el;
+
+    element_t el = {0};
 
 
     if(elIndex > 0) {
@@ -51,12 +51,24 @@ uint8_t NewDebugElement(char* name, uint8_t size) {
     el.valColumn = el.column + nameLen + 2;
     el.size = nameLen + 2 + size;
     
+    if(elIndex >= DEBUG_ELEMENT_AMOUNT) {
+        fprintf(stderr, 
+            "yooo there's too many debug elements. "
+            "You might wanna change DEBUG_ELEMENT_AMOUNT.\n"
+        );
+    }
+
     elements[elIndex] = el; 
     
+    wattrset(debugWin, A_BOLD | COLOR_PAIR(DEBUG_PAIR));
     mvwprintw(debugWin, 0, el.column, "%s: ", name);
     wrefresh(debugWin);
+    wattrset(debugWin, 0);
 
-    return elIndex++;
+    fprintf(stderr, " now %s at %d ", name, elIndex);
+    elIndex++;
+    fprintf(stderr, "next is %d\n", elIndex);
+    return elIndex - 1;
 }
 
 void SetDebugElementBool(uint8_t index, uint8_t val) {
@@ -72,7 +84,6 @@ void SetDebugElementBool(uint8_t index, uint8_t val) {
     if(val) waddch(debugWin, ' ');
 
     wrefresh(debugWin);
-
 }
 
 
@@ -82,5 +93,14 @@ void SetDebugElementInt(uint8_t index, uint16_t val) {
 
 
 void SetDebugElementString(uint8_t index, const char* val) {
+    const element_t el = elements[index];
     
+    // Print the string.
+    mvwaddstr(debugWin, 0, el.valColumn, val);
+
+    // Empty the rest of the element with spaces.
+    for(uint8_t i = getcurx(debugWin); i < el.column + el.size; i++)
+        waddch(debugWin, ' ');
+    
+    wrefresh(debugWin);
 }

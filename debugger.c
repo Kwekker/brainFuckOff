@@ -18,28 +18,51 @@ enum State {
     STATE_EXIT_LOOP,    // Run up to the end of the current brackets or a breakpoint.
 };
 
-// I really like this C feature
+// I really like this C feature.
 const char* stateNames[] = {
     [STATE_IDLE]            = "idle",
-    [STATE_RUN]             = "running",
-    [STATE_BIG_STEP]        = "stepping",
-    [STATE_EXIT_LOOP]       = "exiting loop",
+    [STATE_RUN]             = "run",
+    [STATE_BIG_STEP]        = "step",
+    [STATE_EXIT_LOOP]       = "exit loop",
 };
 
-static void HandleKeyPress(int key);
+
+// The mode determines where the user input goes.
+enum Mode { 
+    MODE_DEBUG, // Default.
+    MODE_INPUT,
+    MODE_MENU
+};
+
+static const char *modeNames[] = {
+    [MODE_DEBUG] = "debug",
+    [MODE_INPUT] = "input",
+    [MODE_MENU]  = "menu",
+};
+
+
+static void HandleDebugKeyPress(int key);
 static int16_t InputRequested(void);
 static void InputPutChar(char put);
 static void HandleTypedInputChar(int typedChar);
 
 static enum State state = STATE_IDLE;
+static enum Mode mode = MODE_DEBUG;
+static uint8_t stateDebugElement = 0;
+static uint8_t modeDebugElement = 0;
+
 static char inputBuffer[INPUT_BUFFER_SIZE]; // I really do not feel like making this dynamic.
 static uint16_t inputBufferSize = 0;
-static uint8_t isInputRequested = 0;
 
 static uint8_t printOutput = 1; // Replace these with bools in C23 (not using stdbool lmao).
-static uint8_t printOutputDebugElement = 0;
 static uint8_t breakOnBreakpoint = 1;
+static uint8_t printOutputDebugElement = 0;
 static uint8_t breakOnBreakpointDebugElement = 0;
+
+// waitForInput gets set whenever a ',' is encountered, but there is no input.
+// The program will halt, but remember it's current state,
+// so that it can continue when the user has provided their input.
+static uint8_t waitForInput = 0;
 
 // Keeps track of the initial loop depth when entering an 'exit loop' state.
 static uint16_t initialLoopDepth = 0;
@@ -75,6 +98,9 @@ uint8_t InitDebug(const char* brainfuckFile, uint16_t outputHeight) {
     breakOnBreakpointDebugElement = NewDebugElement("Breakpoints", 5);
     SetDebugElementBool(breakOnBreakpointDebugElement, breakOnBreakpoint);
 
+    stateDebugElement = NewDebugElement("State", 9);
+    modeDebugElement = NewDebugElement("Mode", 5);
+
     return 0;
 }
 
@@ -93,41 +119,38 @@ void RunDebug(void) {
         UpdateCode(clickedIndex, 0);
     }
 
-
     // TODO: Check if end of code has been reached.
-    // TODO: Make input a mode instead of a state.
+    // TODO: Make input mode only available if input is in a seperate window.
 
     char nextChar = '\0';
 
-    switch(state) {
+    if(!waitForInput) {
+        switch(state) {
 
-    case STATE_IDLE: {
-        
-        break;
-    }
+        case STATE_IDLE:
+            
+            break;
 
-    case STATE_BIG_STEP: {
-        // Run until the character changes.
-        char prevChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
-        if(prevChar != nextChar) state = STATE_IDLE;
-        break;
-    }
+        case STATE_BIG_STEP:
+            // Run until the character changes.
+            const char prevChar = NO_BREAKPOINT_bm & InterpretNextChar(&nextChar);
+            if(prevChar != nextChar) state = STATE_IDLE;
+            break;
 
-    case STATE_RUN: {
-        // Just run.
-        InterpretNextChar(&nextChar);
-        break;
-    }
+        case STATE_RUN:
+            // Just run.
+            InterpretNextChar(&nextChar);
+            break;
 
-    case STATE_EXIT_LOOP: {
-        // Run until the loop depth is lower than the loop depth when entering this state.
-        InterpretNextChar(&nextChar);
-        if(GetLoopDepth() < initialLoopDepth) state = STATE_IDLE;
-        break;
-    }
+        case STATE_EXIT_LOOP:
+            // Run until the loop depth is lower than the loop depth when entering this state.
+            InterpretNextChar(&nextChar);
+            if(GetLoopDepth() < initialLoopDepth) state = STATE_IDLE;
+            break;
 
-    default:
-        break;
+        default: break;
+
+        }
     }
 
     // Break on breakpoints if it's enabled.
@@ -140,9 +163,20 @@ void RunDebug(void) {
         UpdateMemory(GetMemory(), GetMemIndex());
     }
 
+    // Handle key presses.
     int inKey = getch();
-    if(inKey != ERR) HandleKeyPress(inKey);
-
+    if(inKey != ERR) {
+        switch(mode) {
+        case MODE_DEBUG: 
+            HandleDebugKeyPress(inKey); 
+            break;
+        case MODE_INPUT: 
+            HandleTypedInputChar(inKey); 
+            break;
+        case MODE_MENU:
+            break;
+        }
+    }
 
     // Keep track of state changes.
     static enum State prevState = STATE_RUN;
@@ -154,18 +188,27 @@ void RunDebug(void) {
             UpdateMemory(GetMemory(), GetMemIndex());
         }
 
+        SetDebugElementString(stateDebugElement, stateNames[state]);
+
+
         prevState = state;
+    }
+
+    // Keep track of mode changes.
+    static enum Mode prevMode = MODE_MENU;
+    if(mode != prevMode) {
+        SetDebugElementString(modeDebugElement, modeNames[mode]);
+
+        prevMode = mode;
     }
 
 }
 
-void HandleKeyPress(int key) {
+void HandleDebugKeyPress(int key) {
 
-    // This switch statement does get run when an input is required, the next one does not.
-    // This is because you can't really start running when no input is provided. 
     switch(key) {
     case 'i':
-        //TODO: Set mode
+        mode = MODE_INPUT;
         curs_set(1);
         break;
 
@@ -173,13 +216,10 @@ void HandleKeyPress(int key) {
         ToggleBreakPoint();
         UpdateCode(GetCodeIndex(), 0);
         break;
-    }
 
-    if(isInputRequested) return;
-    
-    switch(key) {
     case ' ':
-        state = STATE_RUN;
+        if(state == STATE_IDLE) state = STATE_RUN;
+        else state = STATE_IDLE;
         break;
 
     case KEY_RIGHT:
@@ -220,11 +260,18 @@ void HandleTypedInputChar(int typedChar) {
     // Switch to idle if either Enter or Escape is pressed.
     case '\n':
         InputPutChar('\n');
-        // Notice the lack of a break;
+        mode = MODE_DEBUG;
+        waitForInput = 0;
+        curs_set(0);
+        break;
+
+    case '\e':
     case '\t':
-        // Tab is used to exit input mode because apparently the escape key blocks the program for an entire second.
-        if(inputBufferSize) isInputRequested = 0;
+        // Tab is also used to exit input mode
+        // because apparently the escape key blocks the program for an entire second.
         state = STATE_IDLE;
+        mode = MODE_DEBUG;
+        waitForInput = 0;
         curs_set(0);
         break;
     
@@ -283,7 +330,8 @@ int16_t InputRequested(void) {
 
     if(inputBufferSize) return inputBuffer[--inputBufferSize];
 
-    isInputRequested = 1;
-    state = STATE_IDLE;
+    waitForInput = 1;
+    mode = MODE_INPUT;
+
     return -1;
 }

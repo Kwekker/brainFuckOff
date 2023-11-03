@@ -22,14 +22,13 @@ static void FindAllCodeLines(void);
 
 // Print the first window of code.
 void InitCodeWindow(WINDOW* window, char* code) {
-    // Init the codeLines array with like idk 2 times the window height.
-    codeLinesArraySize = 2 * codeHeight;
-    codeLines = (uint16_t*) malloc(codeLinesArraySize * sizeof(uint16_t));
-
-
     codeWin = window;
     codeHeight = getmaxy(window);
     brainfuckCode = code;
+
+    // Init the codeLines array with like idk 2 times the window height.
+    codeLinesArraySize = 2 * codeHeight;
+    codeLines = (uint16_t*) malloc(codeLinesArraySize * sizeof(uint16_t));
 
     FindAllCodeLines();
     ReprintCode();

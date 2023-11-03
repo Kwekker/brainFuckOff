@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <ncurses.h>
 
-#define DEBUG_ELEMENT_AMOUNT 3
+#define DEBUG_ELEMENT_AMOUNT 5
 
 void InitDebugWindow(WINDOW* win);
 void SetDebugStatus(const char* newStatus);
