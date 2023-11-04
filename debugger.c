@@ -114,9 +114,14 @@ void RunDebug(void) {
 
     // Toggling breakpoints with the mouse.
     if(getmouse(&mouseEvent) == OK) {
-        uint16_t clickedIndex = InterfaceGetCodeIndex(mouseEvent.y, mouseEvent.x);
-        ToggleBreakPointAtCodeIndex(clickedIndex);
-        UpdateCode(clickedIndex, 0);
+        int16_t clickedIndex = InterfaceGetCodeIndex(mouseEvent.y, mouseEvent.x);
+
+        if(clickedIndex != ERR) {
+            ToggleBreakPointAtCodeIndex(clickedIndex);
+            // This actually scrolls the window if you click too low, which is actually kinda nice, so I'll call it a feature.
+            // For some reason it also doesn't scroll away from the cursor, which is doubly nice.
+            UpdateCode(clickedIndex, 0);
+        }
     }
 
     // TODO: Check if end of code has been reached.
@@ -153,12 +158,15 @@ void RunDebug(void) {
         }
     }
 
+    // Keep track of state changes.
+    static enum State prevState = STATE_RUN;
+
     // Break on breakpoints if it's enabled.
     if(breakOnBreakpoint && (nextChar & BREAKPOINT_bm))
         state = STATE_IDLE;
 
-    // Print the output if it's enabled.
-    if(printOutput) {
+    // Print the output if it's enabled and we just did something.
+    if(printOutput && prevState != STATE_IDLE) {
         UpdateCode(GetCodeIndex(), 1);
         UpdateMemory(GetMemory(), GetMemIndex());
     }
@@ -178,15 +186,15 @@ void RunDebug(void) {
         }
     }
 
-    // Keep track of state changes.
-    static enum State prevState = STATE_RUN;
-    if(state != prevState) {
 
+    if(state != prevState) {
         // Gotta update the interface when coming out of a state that doesn't.
         if(state == STATE_IDLE) {
+            timeout(1);
             UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
         }
+        else timeout(0);
 
         SetDebugElementString(stateDebugElement, stateNames[state]);
 

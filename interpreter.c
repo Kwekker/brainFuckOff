@@ -151,12 +151,10 @@ void ToggleBreakPointAtCodeIndex(uint16_t codeIndex) {
     // Find the character in the stripped code.
     while(strippedIndeces[stripIndex] < codeIndex) stripIndex++;
 
-    fprintf(stderr, "found a %c at %d\n", strippedCode[stripIndex], stripIndex);
-
     // Make sure it's a brainfuck character and not a comment.
     if(strippedCode[stripIndex] != fullCode[codeIndex]) return;
 
-    fprintf(stderr, "woo");
+    fprintf(stderr, "found a %c at %d\n", strippedCode[stripIndex], stripIndex);
 
     strippedCode[stripIndex] ^= BREAKPOINT_bm;
     fullCode[codeIndex] ^= BREAKPOINT_bm;

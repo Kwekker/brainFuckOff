@@ -173,7 +173,7 @@ void ReprintCode(void) {
     wstandend(codeWin);
 }
 
-uint16_t InterfaceGetCodeIndex(uint16_t mouseY, uint16_t mouseX) {
+int16_t InterfaceGetCodeIndex(uint16_t mouseY, uint16_t mouseX) {
     // Return the index of the clicked character.
     mouseY -= getbegy(codeWin);
     mouseX -= getbegx(codeWin);
