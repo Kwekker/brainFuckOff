@@ -5,6 +5,7 @@
 #include "debugger.h"
 #include "interpreter.h"
 #include "interface.h"
+#include "color.h"
 
 #define KEY_SENTER 0x157
 
@@ -63,6 +64,8 @@ static uint8_t breakOnBreakpointDebugElement = 0;
 // The program will halt, but remember it's current state,
 // so that it can continue when the user has provided their input.
 static uint8_t waitForInput = 0;
+
+static uint8_t interpretError = 0;
 
 // Keeps track of the initial loop depth when entering an 'exit loop' state.
 static uint16_t initialLoopDepth = 0;
@@ -128,13 +131,36 @@ void RunDebug(void) {
     // TODO: Make input mode only available if input is in a seperate window.
 
     char nextChar = '\0';
+    char prevChar;
+    if(state != STATE_IDLE && !waitForInput) prevChar = InterpretNextChar(&nextChar);
 
-    if(!waitForInput) {
-        switch(state) {
+    // Handle errors.
+    if(INTERPRETER_IS_ERROR(prevChar)) {
+        interpretError = prevChar;
+        switch(prevChar) {
 
-        case STATE_IDLE:
-            
+        case INTERPRETER_EOF: 
+            PrintInfoMessage("Finished running!", COLOR_PAIR(SUCCESS_PAIR));
             break;
+        
+        case INTERPRETER_MEMORY_OUT_OF_BOUNDS: 
+            PrintInfoMessage("Error: Tried to go out of bounds.", COLOR_PAIR(ERROR_PAIR));
+            break;
+        
+        case INTERPRETER_OUT_OF_MEMORY: 
+            PrintInfoMessage("Error: Out of memory! Buy more RAM!", COLOR_PAIR(ERROR_PAIR));
+            break;
+        
+        case INTERPRETER_LEAK: 
+            PrintInfoMessage("Bro I don't even know when this error happens.", COLOR_PAIR(ERROR_PAIR));
+            break;
+            
+        }
+    }
+
+    // Handle special states.
+    if(!waitForInput && !interpretError) {
+        switch(state) {
 
         case STATE_BIG_STEP:
             // Run until the character changes.
@@ -142,14 +168,8 @@ void RunDebug(void) {
             if(prevChar != nextChar) state = STATE_IDLE;
             break;
 
-        case STATE_RUN:
-            // Just run.
-            InterpretNextChar(&nextChar);
-            break;
-
         case STATE_EXIT_LOOP:
             // Run until the loop depth is lower than the loop depth when entering this state.
-            InterpretNextChar(&nextChar);
             if(GetLoopDepth() < initialLoopDepth) state = STATE_IDLE;
             break;
 
@@ -190,7 +210,8 @@ void RunDebug(void) {
     if(state != prevState) {
         // Gotta update the interface when coming out of a state that doesn't.
         if(state == STATE_IDLE) {
-            timeout(1);
+            // Set timeout to block to spare resources.
+            timeout(-1);
             UpdateCode(GetCodeIndex(), 1);
             UpdateMemory(GetMemory(), GetMemIndex());
         }
@@ -271,6 +292,10 @@ void HandleTypedInputChar(int typedChar) {
         mode = MODE_DEBUG;
         waitForInput = 0;
         curs_set(0);
+        
+        // Set getch() back to non-blocking so we can continue to runwithout needing an input at every command.
+        if(state != STATE_IDLE) timeout(0);
+
         break;
 
     case '\e':
@@ -340,6 +365,9 @@ int16_t InputRequested(void) {
 
     waitForInput = 1;
     mode = MODE_INPUT;
+    
+    // Make getch blocking to spare resources.
+    timeout(-1);
 
     return -1;
 }

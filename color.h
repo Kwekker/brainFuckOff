@@ -21,6 +21,9 @@
 #define TRUE_PAIR       13
 #define FALSE_PAIR      14
 
+#define ERROR_PAIR      15
+#define SUCCESS_PAIR    16
+
 #define COLOR_GREY      8
 
 

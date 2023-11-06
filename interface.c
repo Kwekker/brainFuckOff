@@ -210,3 +210,8 @@ void OutputBackspaceChar(void) {
 
     wrefresh(outputWin);
 }
+
+void PrintInfoMessage(char* message, int attribute) {
+    wattrset(outputWin, attribute);
+    wprintw(outputWin, "\n%s\n", message);
+}

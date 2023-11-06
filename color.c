@@ -23,6 +23,11 @@ void InitColorPairs(void) {
     init_pair(TRUE_PAIR,        COLOR_BLACK,    COLOR_GREEN);
     init_pair(FALSE_PAIR,       COLOR_BLACK,    COLOR_RED);
 
+    init_pair(ERROR_PAIR,       COLOR_RED,      COLOR_BLACK);
+    init_pair(SUCCESS_PAIR,     COLOR_GREEN,    COLOR_BLACK);
+
+    
+
     // Not every terminal supports custom colors apparently (cringe).
     if(can_change_color()) {
         init_color(COLOR_GREY, 400, 400, 400);
