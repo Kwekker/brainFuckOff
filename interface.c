@@ -7,6 +7,9 @@
 #include "interface.h"
 #include "color.h"
 
+#define FIRST_MEM_COL 6
+#define FIRST_MEM_ROW 1
+
 static uint16_t memWidth;
 static uint16_t memHeight;
  
@@ -125,24 +128,26 @@ void UpdateMemory(uint8_t* memory, uint16_t memIndex) {
     
     // Turn byte cols/rows into text cols/rows.
     // Rows are 2 long, top margin is 1 long.
-    row = row * 2 + 1;
+    row = row * 2 + FIRST_MEM_ROW;
     // Columns are 3 wide, the index is 6 wide.
-    col = col * 3 + 6;
+    col = col * 3 + FIRST_MEM_COL;
 
-    wattron(memWin, COLOR_PAIR(MEM_CURSOR_PAIR));
+    wattrset(memWin, COLOR_PAIR(MEM_CURSOR_PAIR));
     mvwprintw(memWin, row, col, "%02x", memory[memIndex]);
 
     // Overwrite the previous byte if the cursor has moved.
-    static uint16_t prevRow = 1;
-    static uint16_t prevCol = 6;
+    static uint16_t prevRow = FIRST_MEM_ROW;
+    static uint16_t prevCol = FIRST_MEM_COL;
     static uint16_t prevIndex = 0;
     if(memIndex != prevIndex) {
-        wattron(memWin, COLOR_PAIR(MEM_USED_PAIR));
+        wattrset(memWin, COLOR_PAIR(MEM_USED_PAIR));
         mvwprintw(memWin, prevRow, prevCol, "%02x", memory[prevIndex]);
         prevRow = row;
         prevCol = col;
         prevIndex = memIndex;
     }
+
+    wattrset(memWin, 0);
 
     wrefresh(memWin);
 }
@@ -153,22 +158,30 @@ void InitMemoryWindow(void) {
     // The right margin is automatically added because the space.
     // The first byte column (not text column) is dedicated to indeces.
     memByteCols = (memWidth - 1 - 5) / 3;
+
+    // Print the horizontal index header.
+    wattrset(memWin, COLOR_PAIR(MEM_INDEX_PAIR) | A_ITALIC);
+    wmove(memWin, 0, FIRST_MEM_COL);
+    for(uint16_t i = 0; i < memByteCols; i++) {
+        wprintw(memWin, "%2x ", (uint8_t)i);
+    }
+
     PrintNewMemoryRow();
 }
 
 void PrintNewMemoryRow(void) {
     // Print index
-    wattron(memWin, COLOR_PAIR(MEM_INDEX_PAIR));
-    mvwprintw(memWin, 1 + memByteRows * 2, 1, "%4x ", memByteCols * memByteRows);
-    wattroff(memWin, COLOR_PAIR(MEM_INDEX_PAIR));
+    wattrset(memWin, COLOR_PAIR(MEM_INDEX_PAIR) | A_ITALIC);
+    mvwprintw(memWin, FIRST_MEM_ROW + memByteRows * 2, 1, "%4x ", memByteCols * memByteRows);
+    wattrset(memWin, 0);
 
 
     // Print zeroes, which always come in packets of at least 4 bytes.
-    wattron(memWin, COLOR_PAIR(MEM_IDLE_PAIR));
+    wattrset(memWin, COLOR_PAIR(MEM_IDLE_PAIR));
     for(uint16_t col = 0; col < memByteCols / 4; col++) {
         wprintw(memWin, "00 00 00 00 ");
     }
-    wattroff(memWin, COLOR_PAIR(MEM_IDLE_PAIR));
+    wattrset(memWin, 0);
 
     memByteRows++;
     wrefresh(memWin);
