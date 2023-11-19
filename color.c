@@ -19,7 +19,7 @@ void InitColorPairs(void) {
     init_pair(MEM_USED_PAIR,    COLOR_WHITE,    COLOR_BLACK);
     init_pair(MEM_INDEX_PAIR,   COLOR_GREEN,    COLOR_BLACK);
 
-    init_pair(DEBUG_PAIR,       COLOR_WHITE,    COLOR_CYAN);
+    init_pair(DEBUG_PAIR,       COLOR_WHITE,    COLOR_BLUE);
     init_pair(TRUE_PAIR,        COLOR_BLACK,    COLOR_GREEN);
     init_pair(FALSE_PAIR,       COLOR_BLACK,    COLOR_RED);
 
