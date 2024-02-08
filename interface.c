@@ -117,9 +117,6 @@ void EndInterface(void) {
 static uint16_t memByteCols;
 static uint16_t memByteRows = 0;
 void UpdateMemory(uint8_t* memory, uint16_t memIndex) {
-
-    fprintf(stderr, "updating mem\n");
-
     uint16_t row = memIndex / memByteCols;
     uint16_t col = memIndex % memByteCols;
 
